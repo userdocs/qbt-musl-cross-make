@@ -1,0 +1,121 @@
+name: matrix qbt-musl-cross-make and release
+
+on:
+  - workflow_dispatch
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Host - wget musl-cross-make-master
+        run: wget -qO musl-cross-make-master.tar.gz https://git.zv.io/toolchains/musl-cross-make/-/archive/master/musl-cross-make-master.tar.gz
+
+      - name: "Upload Artifact"
+        uses: actions/upload-artifact@v3
+        id: upload
+        with:
+          name: musl-cross-make-master-archive
+          path: musl-cross-make-master.tar.gz
+
+  build:
+    needs: bootstrap
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [musl-cross-make]
+        os_id: [alpine]
+        os_version_id: [edge]
+        arch_type:
+          [
+            arm-linux-musleabihf,
+            armv7l-linux-musleabihf,
+            aarch64-linux-musl,
+            x86_64-linux-musl,
+          ]
+
+    name: ${{ matrix.name }} ${{ matrix.arch_type }}
+
+    env:
+      armhf: "--with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux"
+      armv7: "--with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb"
+      aarch64: "--with-arch=armv8-a --with-abi=lp64"
+      prerelease: false
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Host - update
+        run: sudo apt-get update
+
+      - name: Host - upgrade
+        run: sudo apt-get -y upgrade
+
+      - name: Host - Install host qemu-static
+        run: sudo apt-get install -y qemu binfmt-support qemu-user-static
+
+      - name: Host - Docker multiarch bootstrap
+        run: sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+      - name: Host - Create docker multiarch container
+        run: docker run --name multiarch -it -d -w /root -v ${{ github.workspace }}:/root ${{ matrix.os_id }}:${{ matrix.os_version_id }}
+
+      - name: Docker - apk install build deps
+        run: docker exec -w /root multiarch apk add autoconf automake bash bash-completion bison build-base cmake ccache curl findutils flex git graphviz libarchive-tools libtool linux-headers ncurses-dev patch perl pkgconf python3 python3-dev re2c rsync rsync tar texinfo ttf-freefont xz zip
+
+      - name: Host - Download artifact - musl-cross-make-master
+        uses: actions/download-artifact@v3
+        id: download
+        with:
+          name: musl-cross-make-master-archive
+          path: musl-cross-make-artifact-archive
+
+      - name: Docker - Unpack musl-cross-make-master artifact
+        run: docker exec -w /root/musl-cross-make-artifact-archive multiarch tar -xf musl-cross-make-master.tar.gz -C /root
+
+      - name: Docker - Set armhf musl to ${{ env.armhf }}
+        if: matrix.arch_type == 'arm-linux-musleabihf'
+        run: |
+          docker exec -w /root multiarch sed "s|GCC_CONFIG +=|GCC_CONFIG += ${{ env.armhf }}|" -i config.mak
+          docker exec -w /root multiarch cat config.mak
+
+      - name: Docker - Set armv7 musl to ${{ env.armv7 }}
+        if: matrix.arch_type == 'armv7l-linux-musleabihf'
+        run: |
+          docker exec -w /root multiarch sed "s|GCC_CONFIG +=|GCC_CONFIG += ${{ env.armv7 }}|" -i config.mak
+          docker exec -w /root multiarch cat config.mak
+
+      - name: Docker - Set aarch64 musl to ${{ env.aarch64 }}
+        if: matrix.arch_type == 'aarch64-linux-musl'
+        run: |
+          docker exec -w /root multiarch sed "s|GCC_CONFIG +=|GCC_CONFIG += ${{ env.aarch64 }}|" -i config.mak
+          docker exec -w /root multiarch cat config.mak
+
+      - name: Docker - Copy updated config.mak to build directory
+        run: docker exec -w /root multiarch cp -f config.mak musl-cross-make-master/config.mak
+
+      - name: Docker - install ${{ matrix.arch_type }} toolchain
+        run: docker exec -w /root/musl-cross-make-master multiarch make -j"$(nproc)" install TARGET=${{ matrix.arch_type }} OUTPUT=/root/build/${{ matrix.arch_type }}
+
+      - name: Docker - archive ${{ matrix.arch_type }} toolchain
+        run: docker exec -w /root/build multiarch tar -czvf ${{ matrix.arch_type }}.tar.gz ${{ matrix.arch_type }}/
+
+      - name: Host - set tag via date
+        run: echo "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
+
+      - name: Host - set release info dynamically from config.mak
+        run: printf "%s\n" "$(sed -rn "/CONFIG_SUB_REV = (.*)/,/LINUX_VER = (.*)/p" config.mak)" > realease_body.md
+
+      - name: Create release - tag - assets
+        uses: ncipollo/release-action@v1.10.0
+        with:
+          prerelease: false
+          artifacts: "build/${{ matrix.arch_type }}.tar.gz"
+          replacesArtifacts: true
+          tag: "${{ env.github_tag }}"
+          name: "musl-cross-make toolchains"
+          bodyFile: "realease_body.md"
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
