@@ -78,19 +78,19 @@ jobs:
       - name: Docker - Set armhf musl to ${{ env.armhf }}
         if: matrix.arch_type == 'arm-linux-musleabihf'
         run: |
-          docker exec -w /root multiarch sed "s|GCC_CONFIG +=|GCC_CONFIG += ${{ env.armhf }}|" -i config.mak
+          docker exec -w /root multiarch sed "s|COMMON_CONFIG += CFLAGS|COMMON_CONFIG += ${{ env.armhf }} CFLAGS|" -i config.mak
           docker exec -w /root multiarch cat config.mak
 
       - name: Docker - Set armv7 musl to ${{ env.armv7 }}
         if: matrix.arch_type == 'armv7l-linux-musleabihf'
         run: |
-          docker exec -w /root multiarch sed "s|GCC_CONFIG +=|GCC_CONFIG += ${{ env.armv7 }}|" -i config.mak
+          docker exec -w /root multiarch sed "s|COMMON_CONFIG += CFLAGS|COMMON_CONFIG += ${{ env.armv7 }} CFLAGS|" -i config.mak
           docker exec -w /root multiarch cat config.mak
 
       - name: Docker - Set aarch64 musl to ${{ env.aarch64 }}
         if: matrix.arch_type == 'aarch64-linux-musl'
         run: |
-          docker exec -w /root multiarch sed "s|GCC_CONFIG +=|GCC_CONFIG += ${{ env.aarch64 }}|" -i config.mak
+          docker exec -w /root multiarch sed "s|COMMON_CONFIG += CFLAGS|COMMON_CONFIG += ${{ env.aarch64 }} CFLAGS|" -i config.mak
           docker exec -w /root multiarch cat config.mak
 
       - name: Docker - Copy updated config.mak to build directory
