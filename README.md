@@ -1,19 +1,13 @@
-# musl-cross-make custom builds
+# musl-cross-make (mcm) custom builds
 
-Multiarch Musl cross build toolchains to use with Alpine Linux based on https://git.zv.io/toolchains/musl-cross-make which delivers the builds on this website http://musl.cc
+Multiarch Musl cross build toolchains to use with Alpine Linux based on https://git.zv.io/toolchains/qbt-musl-cross-make which delivers the builds on this website http://musl.cc
 
-The `config.mak` file [here](https://github.com/userdocs/musl-cross-make/blob/main/config.mak) is used to build all items [defined in this list](https://git.zv.io/toolchains/musl-cross-make/-/blob/master/scripts/triples.txt)
+The `config.mak` file [here](https://github.com/userdocs/qbt-musl-cross-make/blob/main/config.mak) is used to build all items [defined in this list](https://git.zv.io/toolchains/musl-cross-make/-/blob/master/scripts/triples.txt)
 
 
-[Here is the action](https://github.com/userdocs/musl-cross-make/blob/main/.github/workflows/matrix-musl-cross-make-and-release.yml)
+[Here is the action](https://github.com/userdocs/qbt-musl-cross-make/blob/main/.github/workflows/matrix-mcm-build-and-release.yml)
 
-Docker images are also published and are available here - https://hub.docker.com/repository/docker/userdocs/mcm
-
-```docker
-userdocs/mcm:tagname
-```
-
-These builds are more targeted and in sync with Alpine by setting these gcc options when compiling the cross toolchain.
+These builds are targeted to be in sync with Alpine by setting these gcc options when compiling the cross toolchain.
 
 https://git.alpinelinux.org/aports/tree/main/gcc/APKBUILD#n276
 
