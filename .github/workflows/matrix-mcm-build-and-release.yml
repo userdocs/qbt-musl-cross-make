@@ -109,7 +109,7 @@ jobs:
         run: printf "%s\n" "$(sed -rn "/CONFIG_SUB_REV = (.*)/,/LINUX_VER = (.*)/p" config.mak)" > realease_body.md
 
       - name: Create release - tag - assets
-        uses: ncipollo/release-action@v1.10.0
+        uses: ncipollo/release-action@v1.11.0
         with:
           prerelease: false
           artifacts: "build/${{ matrix.arch_type }}.tar.gz"
