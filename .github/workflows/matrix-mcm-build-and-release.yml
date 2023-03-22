@@ -34,6 +34,7 @@ jobs:
             armv7l-linux-musleabihf,
             aarch64-linux-musl,
             x86_64-linux-musl,
+            x86_64-linux-muslx32,
           ]
 
     name: ${{ matrix.name }} ${{ matrix.arch_type }}
@@ -46,6 +47,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Host - phased updates ${{ github.event.inputs.distinct_id }}
+        run: echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
 
       - name: Host - update
         run: sudo apt-get update
