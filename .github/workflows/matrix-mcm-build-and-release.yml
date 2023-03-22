@@ -34,7 +34,6 @@ jobs:
             armv7l-linux-musleabihf,
             aarch64-linux-musl,
             x86_64-linux-musl,
-            x86_64-linux-muslx32,
           ]
 
     name: ${{ matrix.name }} ${{ matrix.arch_type }}
