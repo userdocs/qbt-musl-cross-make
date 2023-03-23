@@ -104,7 +104,7 @@ jobs:
         run: docker exec -w /root/musl-cross-make-master multiarch make -j"$(nproc)" install TARGET=${{ matrix.arch_type }} OUTPUT=/root/build/${{ matrix.arch_type }}
 
       - name: Docker - archive ${{ matrix.arch_type }} toolchain
-        run: docker exec -w /root/build multiarch tar -czvf ${{ matrix.arch_type }}.tar.gz ${{ matrix.arch_type }}/
+        run: docker exec -w /root/build multiarch tar -cJvf ${{ matrix.arch_type }}.tar.xz ${{ matrix.arch_type }}/
 
       - name: Host - set tag via date
         run: echo "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
