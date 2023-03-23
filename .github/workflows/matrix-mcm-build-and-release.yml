@@ -116,7 +116,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           prerelease: false
-          artifacts: "build/${{ matrix.arch_type }}.tar.gz"
+          artifacts: "build/${{ matrix.arch_type }}.tar.xz"
           replacesArtifacts: true
           tag: "${{ env.github_tag }}"
           name: "musl-cross-make toolchains"
