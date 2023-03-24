@@ -34,16 +34,29 @@ jobs:
             armv7l-linux-musleabihf,
             aarch64-linux-musl,
             x86_64-linux-musl,
-            x86_64-linux-muslx32,
+            i486-linux-musl,
+            i686-linux-musl,
           ]
+        include:
+          - arch_type: "arm-linux-musleabihf"
+            arch_config: "--with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux"
+              
+          - arch_type: "armv7l-linux-musleabihf"
+            arch_config: "--with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb"
+              
+          - arch_type: "aarch64-linux-musl"
+            arch_config: "--with-arch=armv8-a --with-abi=lp64"
+              
+          - arch_type: "x86_64-linux-musl"
+            arch_config: ""
+              
+          - arch_type: "i486-linux-musl"
+            arch_config: "--with-arch=i486 --with-tune=generic --enable-cld"
+              
+          - arch_type: "i686-linux-musl"
+            arch_config: "--with-arch=i686 --with-tune=generic --enable-cld"
 
     name: ${{ matrix.name }} ${{ matrix.arch_type }}
-
-    env:
-      armhf: "--with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux"
-      armv7: "--with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb"
-      aarch64: "--with-arch=armv8-a --with-abi=lp64"
-      prerelease: false
 
     steps:
       - uses: actions/checkout@v3
@@ -79,22 +92,9 @@ jobs:
       - name: Docker - Unpack musl-cross-make-master artifact
         run: docker exec -w /root/musl-cross-make-artifact-archive multiarch tar -xf musl-cross-make-master.tar.gz -C /root
 
-      - name: Docker - Set armhf musl to ${{ env.armhf }}
-        if: matrix.arch_type == 'arm-linux-musleabihf'
+      - name: Docker - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
         run: |
-          docker exec -w /root multiarch sed "s|COMMON_CONFIG += CFLAGS|COMMON_CONFIG += ${{ env.armhf }} CFLAGS|" -i config.mak
-          docker exec -w /root multiarch cat config.mak
-
-      - name: Docker - Set armv7 musl to ${{ env.armv7 }}
-        if: matrix.arch_type == 'armv7l-linux-musleabihf'
-        run: |
-          docker exec -w /root multiarch sed "s|COMMON_CONFIG += CFLAGS|COMMON_CONFIG += ${{ env.armv7 }} CFLAGS|" -i config.mak
-          docker exec -w /root multiarch cat config.mak
-
-      - name: Docker - Set aarch64 musl to ${{ env.aarch64 }}
-        if: matrix.arch_type == 'aarch64-linux-musl'
-        run: |
-          docker exec -w /root multiarch sed "s|COMMON_CONFIG += CFLAGS|COMMON_CONFIG += ${{ env.aarch64 }} CFLAGS|" -i config.mak
+          docker exec -w /root multiarch sed "s|COMMON_CONFIG += CFLAGS|COMMON_CONFIG += ${{ matrix.arch_config }} CFLAGS|" -i config.mak
           docker exec -w /root multiarch cat config.mak
 
       - name: Docker - Copy updated config.mak to build directory
