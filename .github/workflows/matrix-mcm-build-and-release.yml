@@ -37,22 +37,18 @@ jobs:
             i486-linux-musl,
             i686-linux-musl,
           ]
+
         include:
           - arch_type: "arm-linux-musleabihf"
             arch_config: "--with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux"
-              
           - arch_type: "armv7l-linux-musleabihf"
             arch_config: "--with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb"
-              
           - arch_type: "aarch64-linux-musl"
             arch_config: "--with-arch=armv8-a --with-abi=lp64"
-              
           - arch_type: "x86_64-linux-musl"
             arch_config: ""
-              
           - arch_type: "i486-linux-musl"
             arch_config: "--with-arch=i486 --with-tune=generic --enable-cld"
-              
           - arch_type: "i686-linux-musl"
             arch_config: "--with-arch=i686 --with-tune=generic --enable-cld"
 
