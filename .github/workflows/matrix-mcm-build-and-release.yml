@@ -89,7 +89,7 @@ jobs:
         run: docker exec -w /root/musl-cross-make-artifact-archive multiarch tar -xf musl-cross-make-master.tar.gz -C /root
 
       - name: Host - Fix always failing GNU site
-        run: sed "s|GNU_SITE = https://ftp.gnu.org/gnu|GNU_SITE = https://mirrors.dotsrc.org/gnu|" -i musl-cross-make-master/Makefile
+        run: docker exec -w /root multiarch sed "s|GNU_SITE = https://ftp.gnu.org/gnu|GNU_SITE = https://mirrors.dotsrc.org/gnu|" -i musl-cross-make-master/Makefile
 
       - name: Docker - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
         run: |
