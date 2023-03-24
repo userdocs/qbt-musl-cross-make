@@ -30,12 +30,13 @@ jobs:
         os_version_id: [edge]
         arch_type:
           [
-            arm-linux-musleabihf,
-            armv7l-linux-musleabihf,
             aarch64-linux-musl,
-            x86_64-linux-musl,
+            arm-linux-musleabihf,
+            armv6-linux-musleabihf,
+            armv7l-linux-musleabihf,
             i486-linux-musl,
             i686-linux-musl,
+            x86_64-linux-musl,
           ]
 
         include:
@@ -57,14 +58,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Host - phased updates ${{ github.event.inputs.distinct_id }}
+      - name: Host - phased updates
         run: echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
 
       - name: Host - update
         run: sudo apt-get update
 
-      # - name: Host - upgrade
-      #   run: sudo apt-get -y upgrade
+      - name: Host - upgrade
+        run: sudo apt-get -y upgrade
 
       - name: Host - Install host qemu-static
         run: sudo apt-get install -y qemu binfmt-support qemu-user-static
@@ -89,10 +90,9 @@ jobs:
         run: docker exec -w /root/musl-cross-make-artifact-archive multiarch tar -xf musl-cross-make-master.tar.gz -C /root
 
       - name: Host - Fix always failing GNU site
-        run: |
-          docker exec -w /root multiarch sed "s|GNU_SITE = https://ftp.gnu.org/gnu|GNU_SITE = https://mirrors.dotsrc.org/gnu|" -i musl-cross-make-master/Makefile
-          docker exec -w /root multiarch sed "s|https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=|https://raw.githubusercontent.com/userdocs/qbt-musl-cross-make/main/|" -i musl-cross-make-master/Makefile
-          docker exec -w /root multiarch mv config.sub.*.sha1 musl-cross-make-master/hashes
+        # run: |
+        #   docker exec -w /root multiarch sed "s|GNU_SITE = https://ftp.gnu.org/gnu|GNU_SITE = https://mirrors.dotsrc.org/gnu|" -i musl-cross-make-master/Makefile
+        #   docker exec -w /root multiarch sed "s|https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=|https://raw.githubusercontent.com/userdocs/qbt-musl-cross-make/main/|" -i musl-cross-make-master/Makefile
 
       - name: Docker - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
         run: |
@@ -100,7 +100,9 @@ jobs:
           docker exec -w /root multiarch cat config.mak
 
       - name: Docker - Copy updated config.mak to build directory
-        run: docker exec -w /root multiarch cp -f config.mak musl-cross-make-master/config.mak
+        run: |
+          docker exec -w /root multiarch cp -f config.mak musl-cross-make-master/config.mak
+          docker exec -w /root multiarch cp -rf custom/. musl-cross-make-master/
 
       - name: Docker - install ${{ matrix.arch_type }} toolchain
         run: docker exec -w /root/musl-cross-make-master multiarch make -j"$(nproc)" install TARGET=${{ matrix.arch_type }} OUTPUT=/root/build/${{ matrix.arch_type }}
