@@ -12,7 +12,7 @@ COMMON_CONFIG += CFLAGS="${FLAG}" CXXFLAGS="${FLAG}" FFLAGS="${FLAG}" LDFLAGS="-
 BINUTILS_CONFIG += --enable-gold=yes
 GCC_CONFIG += --enable-default-pie --enable-static-pie --disable-cet
 
-CONFIG_SUB_REV = 888c8e3d5f7b
+CONFIG_SUB_REV = 63acb96f
 GCC_VER = 12.2.0
 BINUTILS_VER = 2.38
 MUSL_VER = git-b76f37fd5625d038141b52184956fb4b7838e9a5
