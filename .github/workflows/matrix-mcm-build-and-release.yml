@@ -92,6 +92,9 @@ jobs:
         run: |
           docker exec -w /root multiarch sed "s|GNU_SITE = https://ftp.gnu.org/gnu|GNU_SITE = https://mirrors.dotsrc.org/gnu|" -i musl-cross-make-master/Makefile
           docker exec -w /root multiarch sed "s|https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=|https://raw.githubusercontent.com/userdocs/qbt-musl-cross-make/main/|" -i musl-cross-make-master/Makefile
+          docker exec -w /root multiarch mv config.sub.*.sha1 musl-cross-make-master/hashes
+
+          
 
 
 
