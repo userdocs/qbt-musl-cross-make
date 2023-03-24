@@ -94,7 +94,7 @@ jobs:
           docker exec -w /root multiarch cat config.mak
 
       - name: Host - Diff it
-        run: diff config.mak config.mak musl-cross-make-master/config.mak
+        run: diff config.mak musl-cross-make-master/config.mak
 
       - name: Docker - Copy updated config.mak to build directory
         run: docker exec -w /root multiarch cp -f config.mak musl-cross-make-master/config.mak
