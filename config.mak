@@ -7,17 +7,17 @@ else
 COMMON_CONFIG += CC="gcc ${STAT}" CXX="g++ ${STAT}" FC="gfortran ${STAT}"
 endif
 
-COMMON_CONFIG += CFLAGS="${FLAG}" CXXFLAGS="${FLAG}" FFLAGS="${FLAG}" LDFLAGS="-s ${STAT}"
+COMMON_CONFIG += --disable-gprofng CFLAGS="${FLAG}" CXXFLAGS="${FLAG}" FFLAGS="${FLAG}" LDFLAGS="-s ${STAT}"
 
 BINUTILS_CONFIG += --enable-gold=yes
 GCC_CONFIG += --enable-default-pie --enable-static-pie --disable-cet
 
 CONFIG_SUB_REV = 63acb96f
 GCC_VER = 12.2.0
-BINUTILS_VER = 2.38
-MUSL_VER = git-b76f37fd5625d038141b52184956fb4b7838e9a5
+BINUTILS_VER = 2.40
+MUSL_VER = git-7d756e1c04de6eb3f2b3d3e1141a218bb329fcfb
 GMP_VER = 6.2.1
-MPC_VER = 1.2.1
-MPFR_VER = 4.1.0
+MPC_VER = 1.3.1
+MPFR_VER = 4.2.0
 
-LINUX_VER = 5.15.70
+LINUX_VER = 6.2.8
