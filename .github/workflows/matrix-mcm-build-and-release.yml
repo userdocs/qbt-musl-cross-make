@@ -42,18 +42,20 @@ jobs:
           ]
 
         include:
+          - arch_type: "aarch64-linux-musl"
+            arch_config: "--with-arch=armv8-a --with-abi=lp64"
           - arch_type: "arm-linux-musleabihf"
+            arch_config: "--with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux"#
+          - arch_type: "armv6-linux-musleabihf"
             arch_config: "--with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux"
           - arch_type: "armv7l-linux-musleabihf"
             arch_config: "--with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb"
-          - arch_type: "aarch64-linux-musl"
-            arch_config: "--with-arch=armv8-a --with-abi=lp64"
-          - arch_type: "x86_64-linux-musl"
-            arch_config: ""
           - arch_type: "i486-linux-musl"
             arch_config: "--with-arch=i486 --with-tune=generic --enable-cld"
           - arch_type: "i686-linux-musl"
             arch_config: "--with-arch=i686 --with-tune=generic --enable-cld"
+          - arch_type: "x86_64-linux-musl"
+            arch_config: ""
 
     name: ${{ matrix.name }} ${{ matrix.arch_type }}
 
@@ -79,7 +81,10 @@ jobs:
         run: docker run --name multiarch -it -d -w /root -v ${{ github.workspace }}:/root ${{ matrix.os_id }}:${{ matrix.os_version_id }}
 
       - name: Docker - apk install build deps
-        run: docker exec -w /root multiarch apk add autoconf automake bash bash-completion bison build-base cmake ccache curl findutils flex git graphviz libarchive-tools libtool linux-headers ncurses-dev patch perl pkgconf python3 python3-dev re2c rsync rsync tar texinfo ttf-freefont xz zip
+        run: >
+          docker exec -w /root multiarch apk add autoconf automake bash bash-completion bison build-base 
+          cmake ccache curl findutils flex git graphviz libarchive-tools libtool linux-headers ncurses-dev 
+          patch perl pkgconf python3 python3-dev re2c rsync rsync tar texinfo ttf-freefont xz zip
 
       - name: Host - Download artifact - musl-cross-make-master
         uses: actions/download-artifact@v3
@@ -90,10 +95,6 @@ jobs:
 
       - name: Docker - Unpack musl-cross-make-master artifact
         run: docker exec -w /root/musl-cross-make-artifact-archive multiarch tar -xf musl-cross-make-master.tar.gz -C /root
-
-      # - name: Host - Fix always failing GNU site
-      #   run: |
-      #     docker exec -w /root multiarch sed "s|GNU_SITE = https://ftp.gnu.org/gnu|GNU_SITE = https://mirrors.dotsrc.org/gnu|" -i musl-cross-make-master/Makefile
 
       - name: Docker - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
         run: |
@@ -109,7 +110,7 @@ jobs:
         run: docker exec -w /root/musl-cross-make-master multiarch make -j"$(nproc)" install TARGET=${{ matrix.arch_type }} OUTPUT=/root/build/${{ matrix.arch_type }}
 
       - name: Docker - archive ${{ matrix.arch_type }} toolchain
-        run: docker exec -w /root/build multiarch tar -cJvf ${{ matrix.arch_type }}.tar.xz ${{ matrix.arch_type }}/
+        run: docker exec -e XZ_OPT="-9" -w /root/build multiarch tar -cvJf ${{ matrix.arch_type }}.tar.xz ${{ matrix.arch_type }}/
 
       - name: Host - set tag via date
         run: echo "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
