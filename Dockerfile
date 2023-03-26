@@ -16,4 +16,5 @@ RUN curl -Lo toolchain.tar.xz "${BASE_URL}/${TARGET}.tar.xz" \
 	&& rm -rf toolchain.tar.xz \
 	&& cd /usr/local/bin \
 	&& (for f in ${TARGET}-*; do ln -s "$f" "${f#${TARGET}-}"; done) \
-	&& curl -Lo /usr/local/bin/ninja "${NINJA_URL}"
+	&& curl -Lo /usr/local/bin/ninja "${NINJA_URL}" \
+	&& chmod +x /usr/local/bin/ninja
