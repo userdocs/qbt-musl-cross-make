@@ -1,6 +1,6 @@
 FROM alpine:edge
 
-RUN apk add -u --no-cache bash cmake curl git file fortify-headers patch make
+RUN apk add -u --no-cache autoconf automake bash cmake coreutils curl file fortify-headers git gpg patch pkgconf libtool make perl linux-headers ttf-freefont graphviz re2c
 
 ARG TARGET
 ARG BASE_URL
