@@ -60,5 +60,5 @@ jobs:
           push: true
           tags: userdocs/qbt-mcm:${{ matrix.arch_type }}
           build-args: |
-            TARGET="${{ matrix.arch_type }}"
-            BASE_URL="https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download"
+            TARGET=${{ matrix.arch_type }}
+            BASE_URL=https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download
