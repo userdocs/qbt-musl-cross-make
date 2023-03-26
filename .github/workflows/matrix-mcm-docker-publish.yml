@@ -62,3 +62,4 @@ jobs:
           build-args: |
             TARGET=${{ matrix.arch_type }}
             BASE_URL=https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download
+            NINJA_URL=https://github.com/userdocs/qbt-ninja-build/releases/latest/download/ninja-x86_64
