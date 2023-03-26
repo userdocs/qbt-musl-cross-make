@@ -1,6 +1,6 @@
 FROM alpine:edge
 
-RUN apk add -u --no-cache cmake curl git file fortify-headers patch make
+RUN apk add -u --no-cache bash cmake curl git file fortify-headers patch make
 
 ARG TARGET
 ARG BASE_URL
