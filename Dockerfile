@@ -14,4 +14,4 @@ RUN curl -Lo toolchain.tar.xz "${BASE_URL}/${TARGET}.tar.xz" \
 	&& tar -xvf toolchain.tar.xz --strip-components=1 -C /usr/local \
 	&& rm -rf toolchain.tar.xz \
 	&& cd /usr/local/bin \
-	&& for f in ${TARGET}-*; do ln -s "$f" "${f#${TARGET}-}"; done
+	&& (for f in ${TARGET}-*; do ln -s "$f" "${f#${TARGET}-}"; done)
