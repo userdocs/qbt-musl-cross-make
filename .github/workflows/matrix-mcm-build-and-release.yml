@@ -125,7 +125,7 @@ jobs:
       - name: archive ${{ matrix.arch_type }} toolchain
         run: |
           cd "$(pwd)/build"
-          XZ_OPT="-9" tar -cvJf ${{ matrix.arch_type }}.tar.xz ${{ matrix.arch_type }}/
+          XZ_OPT=-9T0 tar -cvJf ${{ matrix.arch_type }}.tar.xz ${{ matrix.arch_type }}/
 
       - name: set tag via date
         run: echo "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
