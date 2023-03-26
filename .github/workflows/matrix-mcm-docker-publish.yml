@@ -1,0 +1,64 @@
+name: qbt-mcm docker build and release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch_type:
+          [
+            aarch64-linux-musl,
+            arm-linux-musleabi,
+            arm-linux-musleabihf,
+            armv6-linux-musleabihf,
+            armv7l-linux-musleabihf,
+            i686-linux-musl,
+            x86_64-linux-musl,
+            mips-linux-muslsf,
+            mips64-linux-musl,
+            mips64el-linux-musl,
+            mipsel-linux-muslsf,
+            powerpc-linux-muslsf,
+            powerpc64le-linux-musl,
+            s390x-linux-musl,
+            riscv64-linux-musl,
+          ]
+
+    name: qtb-mcm-docker ${{ matrix.arch_type }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          install: true
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: userdocs/qbt-mcm
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: userdocs/qbt-mcm:${{ matrix.arch_type }}
+          build-args: |
+            TARGET=${{ matrix.arch_type }}
+            BASE_URL=https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download
