@@ -37,11 +37,11 @@ jobs:
             armv7l-linux-musleabihf,
             i686-linux-musl,
             x86_64-linux-musl,
-            mips-linux-muslsf,
+            mips-linux-musl,
+            mipsel-linux-musl,
             mips64-linux-musl,
             mips64el-linux-musl,
-            mipsel-linux-muslsf,
-            powerpc-linux-muslsf,
+            powerpc-linux-musl,
             powerpc64le-linux-musl,
             s390x-linux-musl,
             riscv64-linux-musl,
@@ -69,7 +69,10 @@ jobs:
           - arch_type: "x86_64-linux-musl"
             arch_config: ""
 
-          - arch_type: "mips-linux-muslsf"
+          - arch_type: "mips-linux-musl"
+            arch_config: "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
+
+          - arch_type: "mipsel-linux-musl"
             arch_config: "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
 
           - arch_type: "mips64-linux-musl"
@@ -78,10 +81,7 @@ jobs:
           - arch_type: "mips64el-linux-musl"
             arch_config: "--with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64"
 
-          - arch_type: "mipsel-linux-muslsf"
-            arch_config: "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
-
-          - arch_type: "powerpc-linux-muslsf"
+          - arch_type: "powerpc-linux-musl"
             arch_config: "--enable-secureplt --enable-decimal-float=no"
 
           - arch_type: "powerpc64le-linux-musl"
