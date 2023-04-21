@@ -2,6 +2,17 @@ name: qbt-mcm docker build and release
 
 on:
   workflow_dispatch:
+    inputs:
+      skip_rerun:
+        description: "Skip rerun?"
+        required: true
+        type: boolean
+      retries:
+        description: 'Number of rerun retries'
+        required: true
+        default: '5'
+        type: choice
+        options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
 
 jobs:
   build:
@@ -63,3 +74,17 @@ jobs:
             TARGET=${{ matrix.arch_type }}
             BASE_URL=https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download
             NINJA_URL=https://github.com/userdocs/qbt-ninja-build/releases/latest/download/ninja-x86_64
+
+  rerun-on-failure:
+    if: failure() && inputs.skip_rerun == '0'
+    name: rerun-on-failure
+    needs: build
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Trigger rerun workflow on job failures
+        run: gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${{ inputs.retries }}
