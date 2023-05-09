@@ -1,7 +1,18 @@
 name: qbt-mcm build and release
 
 on:
-  - workflow_dispatch
+  workflow_dispatch:
+    inputs:
+      skip_rerun:
+        description: "Skip rerun?"
+        required: true
+        type: boolean
+      retries:
+        description: 'Number of rerun retries'
+        required: true
+        default: '5'
+        type: choice
+        options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
 
 jobs:
   bootstrap:
@@ -97,7 +108,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-        
+
       - name: Download artifact - musl-cross-make-master
         uses: actions/download-artifact@v3
         with:
@@ -109,8 +120,8 @@ jobs:
 
       - name: apk install build deps
         run: >
-          apk add autoconf automake bash bison build-base 
-          cmake ccache curl findutils flex git graphviz libarchive-tools libtool linux-headers ncurses-dev 
+          apk add autoconf automake bash bison build-base
+          cmake ccache curl findutils flex git graphviz libarchive-tools libtool linux-headers ncurses-dev
           patch perl pkgconf python3 python3-dev re2c rsync tar texinfo ttf-freefont xz zip
 
       - name: Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
@@ -144,3 +155,19 @@ jobs:
           bodyFile: "release_body.md"
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  rerun-on-failure:
+    if: failure() && inputs.skip_rerun == '0'
+    name: rerun-on-failure
+    needs: release
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Trigger rerun workflow on job failures
+        run: |
+          inputs_retries="${{ inputs.retries }}"
+          gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-5}
