@@ -159,7 +159,7 @@ jobs:
   rerun-on-failure:
     if: failure() && inputs.skip_rerun == '0'
     name: rerun-on-failure
-    needs: release
+    needs: build
     permissions:
       actions: write
     runs-on: ubuntu-latest
