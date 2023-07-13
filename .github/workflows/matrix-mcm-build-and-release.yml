@@ -159,7 +159,7 @@ jobs:
         uses: actions/download-artifact@v3
 
       - name: set release info dynamically from config.mak
-        run: printf "%s\n" "$(sed -rn "/CONFIG_SUB_REV = (.*)/,/LINUX_VER = (.*)/p" config.mak)" > release_body.md
+        run: printf "%s\n" "$(sed -rn "/CONFIG_SUB_REV = (.*)/,/LINUX_VER = (.*)/p" custom/config.mak)" > release_body.md
 
       - name: set tag via date
         run: echo "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
