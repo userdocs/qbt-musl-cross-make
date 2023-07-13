@@ -138,23 +138,42 @@ jobs:
           cd "$(pwd)/build"
           XZ_OPT=-9T0 tar -cvJf ${{ matrix.arch_type }}.tar.xz ${{ matrix.arch_type }}/
 
-      - name: set tag via date
-        run: echo "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
+      - name: Docker - upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: "qbt-musl-cross-make"
+          path: "build/${{ matrix.arch_type }}.tar.xz"
+
+  release:
+    name: Upload artifacts to release
+    runs-on: ubuntu-latest
+    needs: cross_build
+    if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    env:
+      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Host - Download artifacts
+        uses: actions/download-artifact@v3
 
       - name: set release info dynamically from config.mak
         run: printf "%s\n" "$(sed -rn "/CONFIG_SUB_REV = (.*)/,/LINUX_VER = (.*)/p" config.mak)" > release_body.md
+
+      - name: set tag via date
+        run: echo "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
 
       - name: Create release - tag - assets
         uses: ncipollo/release-action@v1
         with:
           prerelease: false
-          artifacts: "build/${{ matrix.arch_type }}.tar.xz"
+          artifacts: qbt-musl-cross-make/*.tar.xz
           replacesArtifacts: true
           tag: "${{ env.github_tag }}"
           name: "musl-cross-make toolchains"
-          bodyFile: "release_body.md"
+          bodyFile: release_body.md
           allowUpdates: true
-          token: ${{ secrets.GITHUB_TOKEN }}
 
   rerun-on-failure:
     if: failure() && inputs.skip_rerun == '0'
