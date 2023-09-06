@@ -18,7 +18,7 @@ jobs:
   bootstrap:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Host - wget musl-cross-make-master
         run: wget -qO musl-cross-make-master.tar.gz https://git.zv.io/toolchains/musl-cross-make/-/archive/master/musl-cross-make-master.tar.gz
@@ -107,7 +107,7 @@ jobs:
     name: ${{ matrix.name }} ${{ matrix.arch_type }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Download artifact - musl-cross-make-master
         uses: actions/download-artifact@v3
@@ -153,7 +153,7 @@ jobs:
       GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Host - Download artifacts
         uses: actions/download-artifact@v3
@@ -185,7 +185,7 @@ jobs:
     env:
       GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Trigger rerun workflow on job failures
         run: |
           inputs_retries="${{ inputs.retries }}"
