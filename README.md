@@ -1,16 +1,10 @@
-# qbt-musl-cross-make 
+# qbt-musl-cross-make
 
-qbt-mcm custom builds
+🔵 This project uses a modified version of <https://git.zv.io/toolchains/musl-cross-make> which is derived from [musl-cross-make](https://github.com/richfelker/musl-cross-make)
 
-Multiarch Musl cross make build toolchains to use with Alpine Linux derived from https://git.zv.io/toolchains/musl-cross-make, which delivers the builds on this website http://musl.cc
+## Build Info
 
-The `config.mak` file [here](https://github.com/userdocs/qbt-musl-cross-make/blob/main/custom/config.mak) is used to build all items [defined in this list](https://git.zv.io/toolchains/musl-cross-make/-/blob/master/scripts/triples.txt)
-
-[Here is the action](https://github.com/userdocs/qbt-musl-cross-make/blob/main/.github/workflows/matrix-mcm-build-and-release.yml)
-
-These builds are targeted to be in sync with Alpine by setting these gcc options when compiling the cross toolchain.
-
-https://git.alpinelinux.org/aports/tree/main/gcc/APKBUILD#n282
+Custom builds of `musl-cross-make` that sync with [Apline OS Linux target architecture configurations](https://git.alpinelinux.org/aports/tree/main/gcc/APKBUILD#n292).
 
 ```bash
 aarch64-linux-musl="--with-arch=armv8-a --with-abi=lp64"
@@ -30,9 +24,43 @@ s390x-linux-musl="--with-arch=z196 --with-tune=zEC12 --with-zarch --with-long-do
 riscv64-linux-musl="--with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic"
 ```
 
+## Download
+
+You can use this URL to always get the latest release:
+
+```
+https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/
+```
+
+By appending the desired target:
+
+```
+aarch64-linux-musl.tar.xz
+arm-linux-musleabi.tar.xz
+arm-linux-musleabihf.tar.xz
+armv6-linux-musleabihf.tar.xz
+armv7l-linux-musleabihf.tar.xz
+i686-linux-musl.tar.xz
+mips-linux-musl.tar.xz
+mips64-linux-musl.tar.xz
+mips64el-linux-musl.tar.xz
+mipsel-linux-musl.tar.xz
+powerpc-linux-musl.tar.xz
+powerpc64le-linux-musl.tar.xz
+riscv64-linux-musl.tar.xz
+s390x-linux-musl.tar.xz
+x86_64-linux-musl.tar.xz
+```
+
+For example, for `x86_64`:
+
+```
+https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/x86_64-linux-musl.tar.xz
+```
+
 ## Docker
 
-There are docker images of the toolchains here https://hub.docker.com/repository/docker/userdocs/qbt-mcm/general
+There are docker images of the toolchains here <https://hub.docker.com/repository/docker/userdocs/qbt-mcm/general>
 
 Tags are the toolset names.
 
@@ -45,3 +73,9 @@ For example:
 ```bash
 docker pull userdocs/qbt-mcm:aarch64-linux-musl
 ```
+
+## Configuration
+
+The build configuration is defined in the `config.mak` file [here](https://github.com/userdocs/qbt-musl-cross-make/blob/main/custom/config.mak)
+
+The versions configuration is defined in the `versions.mak` file [here](https://github.com/userdocs/qbt-musl-cross-make/blob/main/custom/versions.mak)
