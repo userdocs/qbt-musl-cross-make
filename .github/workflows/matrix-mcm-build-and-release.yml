@@ -2,17 +2,6 @@ name: qbt-mcm build and release
 
 on:
   workflow_dispatch:
-    inputs:
-      skip_rerun:
-        description: "Skip rerun?"
-        required: true
-        type: boolean
-      retries:
-        description: 'Number of rerun retries'
-        required: true
-        default: '5'
-        type: choice
-        options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
 
 jobs:
   bootstrap:
@@ -20,14 +9,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Host - wget musl-cross-make-master
-        run: wget -qO musl-cross-make-master.tar.gz https://git.zv.io/toolchains/musl-cross-make/-/archive/master/musl-cross-make-master.tar.gz
+      - name: Host - wget musl-cross-make
+        run: wget -qO musl-cross-make.tar.gz https://git.zv.io/toolchains/musl-cross-make/-/archive/musl.cc/musl-cross-make-musl.cc.tar.gz
 
       - name: "Upload Artifact"
         uses: actions/upload-artifact@v3
         with:
-          name: musl-cross-make-master-archive
-          path: musl-cross-make-master.tar.gz
+          name: musl-cross-make-archive
+          path: musl-cross-make.tar.gz
 
   build:
     needs: bootstrap
@@ -109,14 +98,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download artifact - musl-cross-make-master
+      - name: Download artifact - musl-cross-make
         uses: actions/download-artifact@v3
         with:
-          name: musl-cross-make-master-archive
+          name: musl-cross-make-archive
           path: musl-cross-make-artifact-archive
 
-      - name: Unpack musl-cross-make-master artifact
-        run: tar -xf musl-cross-make-artifact-archive/musl-cross-make-master.tar.gz --strip-components 1 -C "$PWD"
+      - name: Unpack musl-cross-make artifact
+        run: tar -xf musl-cross-make-artifact-archive/musl-cross-make.tar.gz --strip-components 1 -C "$PWD"
 
       - name: apk install build deps
         run: >
@@ -148,6 +137,8 @@ jobs:
     name: Upload artifacts to release
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      contents: write
     if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     env:
       GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -158,8 +149,8 @@ jobs:
       - name: Host - Download artifacts
         uses: actions/download-artifact@v3
 
-      - name: set release info dynamically from config.mak
-        run: printf "%s\n" "$(sed -rn "/CONFIG_SUB_REV = (.*)/,/LINUX_VER = (.*)/p" custom/config.mak)" > release_body.md
+      - name: set release info from custom/versions.mak
+        run: cp -f custom/versions.mak release_body.md
 
       - name: set tag via date
         run: echo "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
@@ -168,25 +159,9 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           prerelease: false
-          artifacts: qbt-musl-cross-make/*.tar.xz
+          artifacts: "qbt-musl-cross-make/*.tar.xz,custom/versions.json"
           replacesArtifacts: true
           tag: "${{ env.github_tag }}"
           name: "musl-cross-make toolchains"
           bodyFile: release_body.md
           allowUpdates: true
-
-  rerun-on-failure:
-    if: failure() && inputs.skip_rerun == '0'
-    name: rerun-on-failure
-    needs: [build,release]
-    permissions:
-      actions: write
-    runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Trigger rerun workflow on job failures
-        run: |
-          inputs_retries="${{ inputs.retries }}"
-          gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-5}

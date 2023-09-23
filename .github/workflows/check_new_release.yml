@@ -1,0 +1,172 @@
+name: check for new releases qbt-musl-cross-make
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_rerun:
+        description: "Skip rerun?"
+        required: true
+        type: boolean
+      retries:
+        description: "Number of rerun retries"
+        required: true
+        default: "5"
+        type: choice
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  # schedule:
+  #   - cron: "*/15 * * * *"
+
+permissions:
+  actions: write
+  contents: write
+  checks: read
+
+jobs:
+  skip_duplicate_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          concurrent_skipping: "always"
+          cancel_others: "false"
+          skip_after_successful_duplicate: false
+          do_not_skip: ""
+
+  check_release:
+    needs: skip_duplicate_job
+    if: ${{ needs.skip_duplicate_job.outputs.should_skip != 'true' }}
+    runs-on: ubuntu-latest
+    name: "Check for latest releases or tags"
+    env:
+      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      trigger_workflow: "no"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get install -y ssed
+
+      - name: boot strap
+        run: |
+          until curl -sLf "https://github.com/userdocs/qbt-musl-cross-make-test/releases/latest/download/versions.json" > remote_versions.json; do
+            echo "waiting for URL."
+            sleep 2
+          done
+
+          declare -A current_versions
+          eval "$(jq -r 'to_entries[]|@sh"current_versions[\(.key)]=\(.value)"' remote_versions.json)"
+
+          declare -A remote_versions
+          remote_versions[CONFIG_SUB_REV]="$(git ls-remote "git://git.savannah.gnu.org/config.git" | head -n1 | awk '{ print substr($1,1,8) }')"
+          remote_versions[GCC_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/gcc/" | ssed -Rn 's|(.*)href="gcc-(.+?)/"(.*)|\2|p' | sort -V | tail -n1)"
+          remote_versions[BINUTILS_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/binutils/" | ssed -Rn 's|(.*)href="binutils-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
+          remote_versions[MUSL_VER]="$(git ls-remote "https://git.musl-libc.org/git/musl" | head -n1 | awk '{ print substr($1,1,8) }')"
+          remote_versions[GMP_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/gmp/" | ssed -Rn 's|(.*)href="gmp-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
+          remote_versions[MPC_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
+          remote_versions[MPFR_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
+          remote_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | ssed -Rn 's|(.*)href="linux-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | head -n1)"
+
+          declare -A remote_urls_dl
+          remote_urls_dl[CONFIG_SUB_REV]="https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=${remote_versions[CONFIG_SUB_REV]}"
+          remote_urls_dl[GCC_VER]="https://mirrors.dotsrc.org/gnu/gcc/gcc-${remote_versions[GCC_VER]}/gcc-${remote_versions[GCC_VER]}.tar.xz"
+          remote_urls_dl[BINUTILS_VER]="https://mirrors.dotsrc.org/gnu/binutils/binutils-${remote_versions[BINUTILS_VER]}.tar.xz"
+          remote_urls_dl[MUSL_VER]=""
+          remote_urls_dl[GMP_VER]="https://mirrors.dotsrc.org/gnu/gmp/gmp-${remote_versions[GMP_VER]}.tar.xz"
+          remote_urls_dl[MPC_VER]="https://mirrors.dotsrc.org/gnu/mpc/mpc-${remote_versions[MPC_VER]}.tar.gz"
+          remote_urls_dl[MPFR_VER]="https://mirrors.dotsrc.org/gnu/mpfr/mpfr-${remote_versions[MPFR_VER]}.tar.xz"
+          remote_urls_dl[LINUX_VER]="https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/linux-${remote_versions[LINUX_VER]}.tar.xz"
+
+          ver() {
+            local test_array
+            read -ra test_array < <(printf "%s" "${@//./ }")
+            printf "%d%03d%03d%03d" "${test_array[@]}"
+          }
+
+          for iray in "${!current_versions[@]}"; do
+            if [[ ! "$iray" =~ ^(CONFIG_SUB_REV|MUSL_VER)$ ]]; then
+              if [[ "$(ver "${current_versions[$iray]}")" -lt "$(ver "${remote_versions[$iray]}")" ]]; then
+                printf "%-14s current:%-10s remote:%-10s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
+                curl -sL "${remote_urls_dl[$iray]}" -o "${remote_urls_dl[$iray]##*/}"
+                sha1sum "${remote_urls_dl[$iray]##*/}" > "custom/hashes/${remote_urls_dl[$iray]##*/}.sha1"
+                rm -f "${remote_urls_dl[$iray]##*/}"
+                echo "trigger_workflow=yes" >> $GITHUB_ENV
+              else
+                printf "%-14s current:%-10s remote:%-10s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
+              fi
+            fi
+
+            if [[ "$iray" =~ ^(CONFIG_SUB_REV|MUSL_VER)$ ]]; then
+              if [[ "${current_versions[$iray]}" != "${remote_versions[$iray]}" ]]; then
+                printf "%-14s current:%-10s remote:%-10s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
+
+                if [[ "$iray" != "MUSL_VER" ]]; then
+                  printf '%s' "$(curl -sL "${remote_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "custom/hashes/config.sub.${remote_versions[CONFIG_SUB_REV]}.sha1"
+                fi
+                echo "trigger_workflow=yes" >> $GITHUB_ENV
+              else
+                printf "%-14s current:%-10s remote:%-10s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
+              fi
+            fi
+          done
+
+          cat > "custom/versions.json" <<- VERSIONS_JSON
+          {
+            "CONFIG_SUB_REV": "${remote_versions[CONFIG_SUB_REV]}",
+            "GCC_VER": "${remote_versions[GCC_VER]}",
+            "BINUTILS_VER": "${remote_versions[BINUTILS_VER]}",
+            "MUSL_VER": "${remote_versions[MUSL_VER]}",
+            "GMP_VER": "${remote_versions[GMP_VER]}",
+            "MPC_VER": "${remote_versions[MPC_VER]}",
+            "MPFR_VER": "${remote_versions[MPFR_VER]}",
+            "LINUX_VER": "${remote_versions[LINUX_VER]}"
+          }
+          VERSIONS_JSON
+
+          cat > "custom/versions.mak" <<- VERSIONS_MAK
+          CONFIG_SUB_REV = ${remote_versions[CONFIG_SUB_REV]}
+          GCC_VER = ${remote_versions[GCC_VER]}
+          BINUTILS_VER = ${remote_versions[BINUTILS_VER]}
+          MUSL_VER = git-${remote_versions[MUSL_VER]}
+          GMP_VER = ${remote_versions[GMP_VER]}
+          MPC_VER = ${remote_versions[MPC_VER]}
+          MPFR_VER = ${remote_versions[MPFR_VER]}
+          LINUX_VER = ${remote_versions[LINUX_VER]}
+          VERSIONS_MAK
+
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Automated Change
+          file_pattern: "custom/versions.json custom/versions.mak custom/hashes/*.sha1"
+
+      - name: Trigger workflow - matrix-mcm-build-and-release.yml
+        if: env.trigger_workflow == 'yes'
+        run: gh workflow run matrix-mcm-build-and-release.yml
+
+      - name: Await workflow - matrix-mcm-build-and-release.yml
+        if: env.trigger_workflow == 'yes'
+        uses: codex-/await-local-workflow-run@v1
+        with:
+          token: ${{ github.token }}
+          workflow: "matrix-mcm-build-and-release.yml"
+          timeout_mins: 60
+          poll_interval_ms: 10000
+
+  rerun-on-failure:
+    if: failure() && inputs.skip_rerun == '0'
+    name: rerun-on-failure
+    needs: [check_release]
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger rerun workflow on job failures
+        run: |
+          inputs_retries="${{ inputs.retries }}"
+          gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-5}
