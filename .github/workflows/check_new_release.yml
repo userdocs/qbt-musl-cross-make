@@ -10,7 +10,7 @@ on:
       retries:
         description: "Number of rerun retries"
         required: true
-        default: "5"
+        default: "1"
         type: choice
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
   # schedule:
@@ -153,6 +153,19 @@ jobs:
           token: ${{ github.token }}
           workflow: "matrix-mcm-build-and-release.yml"
           timeout_mins: 60
+          poll_interval_ms: 10000
+
+      - name: Trigger workflow - matrix-mcm-docker-publish.yml
+        if: env.trigger_workflow == 'yes'
+        run: gh workflow run matrix-mcm-docker-publish.yml
+
+      - name: Await workflow - matrix-mcm-docker-publish.yml
+        if: env.trigger_workflow == 'yes'
+        uses: codex-/await-local-workflow-run@v1
+        with:
+          token: ${{ github.token }}
+          workflow: "matrix-mcm-docker-publish.yml"
+          timeout_mins: 20
           poll_interval_ms: 10000
 
   rerun-on-failure:
