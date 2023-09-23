@@ -52,7 +52,7 @@ jobs:
 
       - name: boot strap
         run: |
-          until curl -sLf "https://github.com/userdocs/qbt-musl-cross-make-test/releases/latest/download/versions.json" > remote_versions.json; do
+          until curl -sLf "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/versions.json" > remote_versions.json; do
             echo "waiting for URL."
             sleep 2
           done
