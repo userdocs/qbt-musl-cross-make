@@ -5,4 +5,4 @@ MUSL_VER = git-79bdacff
 GMP_VER = 6.3.0
 MPC_VER = 1.3.1
 MPFR_VER = 4.2.1
-LINUX_VER = 6.6
+LINUX_VER = 6.6.1
