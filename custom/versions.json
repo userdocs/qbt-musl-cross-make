@@ -3,7 +3,7 @@
   "GCC_VER": "13.2.0",
   "BINUTILS_VER": "2.41",
   "MUSL_VER": "79bdacff",
-  "GMP_VER": "",
+  "GMP_VER": "6.3.0",
   "MPC_VER": "1.3.1",
   "MPFR_VER": "4.2.1",
   "LINUX_VER": "6.6.1"
