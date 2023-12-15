@@ -13,7 +13,7 @@ jobs:
         run: wget -qO musl-cross-make.tar.gz https://git.zv.io/toolchains/musl-cross-make/-/archive/musl.cc/musl-cross-make-musl.cc.tar.gz
 
       - name: "Upload Artifact"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: musl-cross-make-archive
           path: musl-cross-make.tar.gz
@@ -128,7 +128,7 @@ jobs:
           XZ_OPT=-9T0 tar -cvJf ${{ matrix.arch_type }}.tar.xz ${{ matrix.arch_type }}/
 
       - name: Docker - upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "qbt-musl-cross-make"
           path: "build/${{ matrix.arch_type }}.tar.xz"
