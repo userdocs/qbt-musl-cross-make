@@ -99,7 +99,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download artifact - musl-cross-make
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: musl-cross-make-archive
           path: musl-cross-make-artifact-archive
@@ -147,7 +147,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Host - Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: set release info from custom/versions.mak
         run: cp -f custom/versions.mak release_body.md
