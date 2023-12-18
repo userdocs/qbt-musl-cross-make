@@ -5,6 +5,6 @@
   "MUSL_VER": "f314e133",
   "GMP_VER": "",
   "MPC_VER": "",
-  "MPFR_VER": "4.2.1",
+  "MPFR_VER": "",
   "LINUX_VER": "6.6.7"
 }
