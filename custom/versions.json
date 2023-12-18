@@ -1,10 +1,10 @@
 {
   "CONFIG_SUB_REV": "28ea239c",
   "GCC_VER": "",
-  "BINUTILS_VER": "",
+  "BINUTILS_VER": "2.41",
   "MUSL_VER": "f314e133",
   "GMP_VER": "",
   "MPC_VER": "",
-  "MPFR_VER": "",
+  "MPFR_VER": "4.2.1",
   "LINUX_VER": "6.6.7"
 }
