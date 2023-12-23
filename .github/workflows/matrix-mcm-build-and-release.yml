@@ -130,7 +130,7 @@ jobs:
       - name: Docker - upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: "qbt-musl-cross-make"
+          name: "qbt-musl-cross-make-${{ matrix.runs-on }}"
           path: "build/${{ matrix.arch_type }}.tar.xz"
 
   release:
@@ -148,6 +148,10 @@ jobs:
 
       - name: Host - Download artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: qbt-musl-cross-make
+          pattern: qbt-musl-cross-make-*
+          merge-multiple: true
 
       - name: set release info from custom/versions.mak
         run: cp -f custom/versions.mak release_body.md
