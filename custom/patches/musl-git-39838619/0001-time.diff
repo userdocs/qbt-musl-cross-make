@@ -1,0 +1,36 @@
+commit 190bc63b055e6045c3b3137b222c42c5e859c7df
+Author: Rich Felker <dalias@aerifal.cx>
+Date:   Thu Feb 8 14:44:00 2024 -0500
+
+    fix erroneous feature test macro check for ppoll
+
+    commit f247462b0831cbf163e976ee9a909748c674b88b incorrectly hid ppoll
+    in the presence of _GNU_SOURCE due to an oversight that defining
+    _BSD_SOURCE does not implicitly define _GNU_SOURCE. at present,
+    headers still have to explicitly check for each feature profile level;
+    this may be changed at some point in the future via features.h, but
+    has not been changed yet.
+
+diff --git a/include/poll.h b/include/poll.h
+index bf9cb99a..272dc34a 100644
+--- a/include/poll.h
++++ b/include/poll.h
+@@ -36,7 +36,7 @@ struct pollfd {
+
+ int poll (struct pollfd *, nfds_t, int);
+
+-#ifdef _BSD_SOURCE
++#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+ #define __NEED_time_t
+ #define __NEED_struct_timespec
+ #define __NEED_sigset_t
+@@ -45,7 +45,7 @@ int ppoll(struct pollfd *, nfds_t, const struct timespec *, const sigset_t *);
+ #endif
+
+ #if _REDIR_TIME64
+-#ifdef _BSD_SOURCE
++#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+ __REDIR(ppoll, __ppoll_time64);
+ #endif
+ #endif
+
