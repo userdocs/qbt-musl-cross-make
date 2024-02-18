@@ -1,4 +1,4 @@
-name: mcm build and release
+name: qbt-musl-cross-make - build and release
 
 on:
   workflow_dispatch:

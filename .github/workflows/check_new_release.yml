@@ -1,4 +1,4 @@
-name: check for new releases qbt-musl-cross-make
+name: qbt-musl-cross-make - check for new releases
 
 on:
   workflow_dispatch:
