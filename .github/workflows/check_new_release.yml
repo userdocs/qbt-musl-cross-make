@@ -6,6 +6,7 @@ on:
       skip_rerun:
         description: "Skip rerun?"
         required: true
+        default: true
         type: boolean
       retries:
         description: "Number of rerun retries"
@@ -13,8 +14,8 @@ on:
         default: "1"
         type: choice
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  schedule:
-    - cron: "0 */3 * * *"
+  # schedule:
+  #   - cron: "0 */3 * * *"
 
 permissions:
   actions: write
@@ -64,7 +65,7 @@ jobs:
           remote_versions[CONFIG_SUB_REV]="$(git ls-remote "git://git.savannah.gnu.org/config.git" | head -n1 | awk '{ print substr($1,1,8) }')"
           remote_versions[GCC_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/gcc/" | ssed -Rn 's|(.*)href="gcc-(.+?)/"(.*)|\2|p' | sort -V | tail -n1)"
           remote_versions[BINUTILS_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/binutils/" | ssed -Rn 's|(.*)href="binutils-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
-          remote_versions[MUSL_VER]="$(git ls-remote "https://git.musl-libc.org/git/musl" | head -n1 | awk '{ print substr($1,1,8) }')"
+          remote_versions[MUSL_VER]=git-"$(git ls-remote "https://git.musl-libc.org/git/musl" | head -n1 | awk '{ print substr($1,1,8) }')"
           remote_versions[GMP_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/gmp/" | ssed -Rn 's|(.*)href="gmp-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
           remote_versions[MPC_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
           remote_versions[MPFR_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
@@ -91,7 +92,7 @@ jobs:
               if [[ "$(ver "${current_versions[$iray]}")" -lt "$(ver "${remote_versions[$iray]}")" ]]; then
                 printf "%-14s current:%-10s remote:%-10s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
                 curl -sL "${remote_urls_dl[$iray]}" -o "${remote_urls_dl[$iray]##*/}"
-                sha1sum "${remote_urls_dl[$iray]##*/}" > "custom/hashes/${remote_urls_dl[$iray]##*/}.sha1"
+                sha1sum "${remote_urls_dl[$iray]##*/}" > "hashes/${remote_urls_dl[$iray]##*/}.sha1"
                 rm -f "${remote_urls_dl[$iray]##*/}"
                 echo "trigger_workflow=yes" >> $GITHUB_ENV
               else
@@ -104,7 +105,7 @@ jobs:
                 printf "%-14s current:%-10s remote:%-10s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
 
                 if [[ "$iray" != "MUSL_VER" ]]; then
-                  printf '%s' "$(curl -sL "${remote_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "custom/hashes/config.sub.${remote_versions[CONFIG_SUB_REV]}.sha1"
+                  printf '%s' "$(curl -sL "${remote_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "hashes/config.sub.${remote_versions[CONFIG_SUB_REV]}.sha1"
                 fi
                 echo "trigger_workflow=yes" >> $GITHUB_ENV
               else
@@ -113,7 +114,7 @@ jobs:
             fi
           done
 
-          cat > "custom/versions.json" <<- VERSIONS_JSON
+          cat > "versions.json" <<- VERSIONS_JSON
           {
             "CONFIG_SUB_REV": "${remote_versions[CONFIG_SUB_REV]}",
             "GCC_VER": "${remote_versions[GCC_VER]}",
@@ -126,11 +127,11 @@ jobs:
           }
           VERSIONS_JSON
 
-          cat > "custom/versions.mak" <<- VERSIONS_MAK
+          cat > "versions.mak" <<- VERSIONS_MAK
           CONFIG_SUB_REV = ${remote_versions[CONFIG_SUB_REV]}
           GCC_VER = ${remote_versions[GCC_VER]}
           BINUTILS_VER = ${remote_versions[BINUTILS_VER]}
-          MUSL_VER = git-${remote_versions[MUSL_VER]}
+          MUSL_VER = ${remote_versions[MUSL_VER]}
           GMP_VER = ${remote_versions[GMP_VER]}
           MPC_VER = ${remote_versions[MPC_VER]}
           MPFR_VER = ${remote_versions[MPFR_VER]}
@@ -140,7 +141,7 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: Automated Change
-          file_pattern: "custom/versions.json custom/versions.mak custom/hashes/*.sha1"
+          file_pattern: "versions.json versions.mak hashes/*.sha1"
 
       - name: Trigger workflow - matrix-mcm-build-and-release.yml
         if: env.trigger_workflow == 'yes'
@@ -153,19 +154,6 @@ jobs:
           token: ${{ github.token }}
           workflow: "matrix-mcm-build-and-release.yml"
           timeout_mins: 60
-          poll_interval_ms: 10000
-
-      - name: Trigger workflow - matrix-mcm-docker-publish.yml
-        if: env.trigger_workflow == 'yes'
-        run: gh workflow run matrix-mcm-docker-publish.yml
-
-      - name: Await workflow - matrix-mcm-docker-publish.yml
-        if: env.trigger_workflow == 'yes'
-        uses: codex-/await-local-workflow-run@v1
-        with:
-          token: ${{ github.token }}
-          workflow: "matrix-mcm-docker-publish.yml"
-          timeout_mins: 20
           poll_interval_ms: 10000
 
   rerun-on-failure:

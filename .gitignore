@@ -1,0 +1,12 @@
+/sources/
+/output/
+/binutils-*/
+/gcc-*/
+/musl-*/
+/gmp-*/
+/mpc-*/
+/mpfr-*/
+/build-*/
+/linux-*/
+/isl-*/
+/build/
