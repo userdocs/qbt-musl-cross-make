@@ -2,6 +2,12 @@ name: mcm build and release
 
 on:
   workflow_dispatch:
+    inputs:
+      docker_only:
+        description: "Docker job only"
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   bootstrap-matrix:
@@ -15,6 +21,7 @@ jobs:
         run: echo "matrix_includes=$(jq -c . triples.json)" >> $GITHUB_OUTPUT
 
   build:
+    if: inputs.docker_only == '0'
     needs: bootstrap-matrix
     runs-on: ubuntu-latest
     container:
@@ -71,7 +78,7 @@ jobs:
     needs: [bootstrap-matrix, build]
     permissions:
       contents: write
-    if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && inputs.docker_only == '0'
     env:
       GH_TOKEN: "${{ github.TOKEN }}"
     steps:
@@ -105,6 +112,7 @@ jobs:
           allowUpdates: true
 
   docker-publish:
+    if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     needs: [bootstrap-matrix, build, release]
     runs-on: ubuntu-latest
     permissions:
@@ -138,6 +146,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
+          platforms: linux/amd64
           context: .
           file: Dockerfile
           push: true
