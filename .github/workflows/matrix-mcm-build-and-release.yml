@@ -37,9 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: apk update
+        run: apk update
+
       - name: apk install build deps
         run: >
-          apk add --no-cache
+          apk add -u --no-cache
           autoconf automake
           bash bison build-base
           curl

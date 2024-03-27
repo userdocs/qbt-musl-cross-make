@@ -13,7 +13,7 @@ MUSL_SITE = https://musl.libc.org/releases
 MUSL_REPO = git://git.musl-libc.org/musl
 LINUX_SITE = https://cdn.kernel.org/pub/linux/kernel
 
-DL_CMD = wget -c -O
+DL_CMD = curl -sL4 --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 -o
 SHA1_CMD = sha1sum -c
 COWPATCH = $(CURDIR)/cowpatch.sh
 
