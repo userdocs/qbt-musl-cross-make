@@ -1,6 +1,6 @@
 {
   "CONFIG_SUB_REV": "948ae97c",
-  "GCC_VER": "13.2.0",
+  "GCC_VER": "14.1.0",
   "BINUTILS_VER": "2.42",
   "MUSL_VER": "git-2c124e13",
   "GMP_VER": "6.3.0",
