@@ -10,11 +10,11 @@
             },
             {
               "arch_type": "arm-linux-musleabihf",
-              "arch_config": "--with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux"
+              "arch_config": "--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
             },
             {
               "arch_type": "armv6-linux-musleabihf",
-              "arch_config": "--with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux"
+              "arch_config": "--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
             },
             {
               "arch_type": "armv7l-linux-musleabihf",
@@ -22,7 +22,7 @@
             },
             {
               "arch_type": "i686-linux-musl",
-              "arch_config": "--with-arch=i686 --with-tune=generic --enable-cld"
+              "arch_config": "--with-arch=pentium-m --with-fpmath=sse --with-tune=generic --enable-cld"
             },
             {
               "arch_type": "x86_64-linux-musl",
