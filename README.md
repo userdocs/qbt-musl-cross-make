@@ -9,10 +9,10 @@ Custom builds of `musl-cross-make` that sync with [Alpine OS Linux target archit
 ```bash
 aarch64-linux-musl="--with-arch=armv8-a --with-abi=lp64"
 arm-linux-musleabi="--with-arch=armv5te --with-tune=arm926ej-s --with-float=soft --with-abi=aapcs-linux"
-arm-linux-musleabihf="--with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux"
-armv6-linux-musleabihf="--with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux"
+arm-linux-musleabihf="--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
+armv6-linux-musleabihf="--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
 armv7l-linux-musleabihf="--with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb"
-i686-linux-musl="--with-arch=i686 --with-tune=generic --enable-cld"
+i686-linux-musl="--with-arch=pentium-m --with-fpmath=sse --with-tune=generic --enable-cld"
 x86_64-linux-musl="--with-arch=x86-64 --with-tune=generic"
 mips-linux-musl="--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
 mipsel-linux-musl="--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
