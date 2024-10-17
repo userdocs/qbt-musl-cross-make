@@ -9,11 +9,7 @@ ENV CC=${TARGET}-gcc
 ENV CXX=${TARGET}-g++
 ENV AR=${TARGET}-ar
 
-RUN apk add -u --no-cache autoconf automake bash cmake coreutils curl file fortify-headers git gpg patch pkgconf libtool make perl linux-headers ttf-freefont graphviz re2c \
-	&& curl -Lo toolchain.tar.xz "${BASE_URL}/${TARGET}.tar.xz" \
-	&& tar -xvf toolchain.tar.xz --strip-components=1 -C /usr/local \
-	&& rm -rf toolchain.tar.xz \
+RUN apk add -u --no-cache autoconf automake bash cmake coreutils curl file fortify-headers git gpg patch pkgconf libtool make perl linux-headers ttf-freefont graphviz re2c xz ninja-build ninja-is-really-ninja \
+	&& curl -Lo- "${BASE_URL}/${TARGET}.tar.xz" | tar xJf - --strip-components=1 -C /usr/local \
 	&& cd /usr/local/bin \
-	&& (for f in ${TARGET}-*; do ln -s "$f" "${f#${TARGET}-}"; done) \
-	&& curl -Lo /usr/local/bin/ninja "${NINJA_URL}" \
-	&& chmod +x /usr/local/bin/ninja
+	&& (for f in ${TARGET}-*; do ln -s "$f" "${f#${TARGET}-}"; done)
