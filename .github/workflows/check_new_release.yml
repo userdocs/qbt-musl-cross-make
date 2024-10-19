@@ -70,6 +70,7 @@ jobs:
           remote_versions[MPC_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
           remote_versions[MPFR_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
           remote_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | ssed -Rn 's|(.*)href="linux-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | head -n1)"
+          remote_versions[ISL_VER]="$(curl -sL https://libisl.sourceforge.io | ssed -Rn 's|(.*)href="isl-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n11)"
 
           # Verify the array entries and exit on failure
           for key in "${!remote_versions[@]}"; do
@@ -88,6 +89,7 @@ jobs:
           remote_urls_dl[MPC_VER]="https://mirrors.dotsrc.org/gnu/mpc/mpc-${remote_versions[MPC_VER]}.tar.gz"
           remote_urls_dl[MPFR_VER]="https://mirrors.dotsrc.org/gnu/mpfr/mpfr-${remote_versions[MPFR_VER]}.tar.xz"
           remote_urls_dl[LINUX_VER]="https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/linux-${remote_versions[LINUX_VER]}.tar.xz"
+          remote_urls_dl[ISL_VER]="https://libisl.sourceforge.io/isl-${remote_versions[ISL_VER]}.tar.xz"
 
           ver() {
             local test_array
@@ -131,7 +133,8 @@ jobs:
             "GMP_VER": "${remote_versions[GMP_VER]}",
             "MPC_VER": "${remote_versions[MPC_VER]}",
             "MPFR_VER": "${remote_versions[MPFR_VER]}",
-            "LINUX_VER": "${remote_versions[LINUX_VER]}"
+            "LINUX_VER": "${remote_versions[LINUX_VER]}",
+            "ISL_VER": "${remote_versions[ISL_VER]}"
           }
           VERSIONS_JSON
 
@@ -144,6 +147,7 @@ jobs:
           MPC_VER = ${remote_versions[MPC_VER]}
           MPFR_VER = ${remote_versions[MPFR_VER]}
           LINUX_VER = ${remote_versions[LINUX_VER]}
+          ISL_VER = ${remote_versions[ISL_VER]}
           VERSIONS_MAK
 
       - uses: stefanzweifel/git-auto-commit-action@v5
