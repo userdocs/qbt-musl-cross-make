@@ -59,6 +59,10 @@
             {
               "arch_type": "riscv64-linux-musl",
               "arch_config": "--with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic"
+            },
+            {
+              "arch_type": "loongarch64-linux-musl",
+              "arch_config": "--with-arch=loongarch64 --with-abi=lp64d"
             }
           ]
         }
