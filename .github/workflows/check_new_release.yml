@@ -70,7 +70,7 @@ jobs:
           remote_versions[MPC_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
           remote_versions[MPFR_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
           remote_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | ssed -Rn 's|(.*)href="linux-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | head -n1)"
-          remote_versions[ISL_VER]="$(curl -sL https://libisl.sourceforge.io | ssed -Rn 's|(.*)href="isl-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n11)"
+          remote_versions[ISL_VER]="$(curl -sL https://libisl.sourceforge.io | ssed -Rn 's|(.*)href="isl-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
 
           # Verify the array entries and exit on failure
           for key in "${!remote_versions[@]}"; do
