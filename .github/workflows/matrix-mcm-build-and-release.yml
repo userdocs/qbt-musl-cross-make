@@ -9,6 +9,16 @@ on:
         default: false
         type: boolean
 
+permissions:
+  id-token: write
+  packages: write
+  contents: write
+  attestations: write
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  GH_TOKEN: "${{ github.TOKEN }}"
+
 jobs:
   bootstrap-matrix:
     runs-on: ubuntu-latest
@@ -26,8 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: alpine:edge
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.bootstrap-matrix.outputs.matrix_includes) }}
@@ -73,6 +81,11 @@ jobs:
           cd "$(pwd)/build"
           XZ_OPT=-9T0 tar -cvJf ${{ matrix.arch_type }}.tar.xz ${{ matrix.arch_type }}/
 
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "build/${{ matrix.arch_type }}.tar.xz"
+
       - name: Docker - upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -83,8 +96,6 @@ jobs:
     name: Upload artifacts to release
     runs-on: ubuntu-latest
     needs: [bootstrap-matrix, build]
-    permissions:
-      contents: write
     if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && inputs.docker_only == '0'
     env:
       GH_TOKEN: "${{ github.TOKEN }}"
@@ -122,9 +133,6 @@ jobs:
     if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     needs: [bootstrap-matrix, build, release]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.bootstrap-matrix.outputs.matrix_includes) }}
@@ -158,9 +166,17 @@ jobs:
           file: Dockerfile
           push: true
           no-cache: true
-          tags: ghcr.io/${{ github.repository }}:${{ matrix.arch_type }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.arch_type }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             TARGET=${{ matrix.arch_type }}
             BASE_URL=https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download
             NINJA_URL=https://github.com/userdocs/qbt-ninja-build/releases/latest/download/ninja-x86_64
+
+      - name: Attest
+        uses: actions/attest-build-provenance@v1
+        id: attest
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
