@@ -158,7 +158,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build and push
+      - name: Build and push Docker image
+        id: push
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64
@@ -173,7 +174,7 @@ jobs:
             BASE_URL=https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download
 
       - name: Attest
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v2
         id: attest
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
