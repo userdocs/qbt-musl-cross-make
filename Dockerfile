@@ -12,3 +12,10 @@ RUN apk add -u --no-cache autoconf automake bash cmake coreutils curl file forti
 	&& curl -Lo- "${BASE_URL}/${TARGET}.tar.xz" | tar xJf - --strip-components=1 -C /usr/local \
 	&& cd /usr/local/bin \
 	&& (for f in ${TARGET}-*; do ln -s "$f" "${f#${TARGET}-}"; done)
+
+RUN useradd -ms /bin/bash -u 1001 github \
+	&& printf '%s' 'github ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/github
+
+USER github
+
+WORKDIR /home/github
