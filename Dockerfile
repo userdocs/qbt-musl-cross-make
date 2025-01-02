@@ -13,11 +13,12 @@ RUN apk add -u --no-cache autoconf automake bash cmake coreutils curl file forti
 	&& cd /usr/local/bin \
 	&& (for f in ${TARGET}-*; do ln -s "$f" "${f#${TARGET}-}"; done)
 
+RUN adduser -h /home/username -Ds /bin/bash -u 1000 username \
+	&& printf '%s' 'username ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/username
+
 RUN adduser -h /home/github -Ds /bin/bash -u 1001 github \
 	&& printf '%s' 'github ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/github
 
 USER github
-
 VOLUME /home/github
-
 WORKDIR /home/github
