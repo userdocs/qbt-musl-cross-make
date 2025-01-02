@@ -21,4 +21,5 @@ RUN adduser -h /home/github -Ds /bin/bash -u 1001 github \
 
 USER github
 VOLUME /home/github
+VOLUME /home/username
 WORKDIR /home/github
