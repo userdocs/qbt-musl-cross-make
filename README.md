@@ -22,6 +22,7 @@ powerpc-linux-musl="--enable-secureplt --enable-decimal-float=no"
 powerpc64le-linux-musl="--with-abi=elfv2 --enable-secureplt --enable-decimal-float=no --enable-targets=powerpcle-linux"
 s390x-linux-musl="--with-arch=z196 --with-tune=zEC12 --with-zarch --with-long-double-128 --enable-decimal-float"
 riscv64-linux-musl="--with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic"
+loongarch64-linux-musl="--with-arch=la64v1.0 --with-abi=lp64d"
 ```
 
 ## Download
@@ -41,6 +42,7 @@ arm-linux-musleabihf.tar.xz
 armv6-linux-musleabihf.tar.xz
 armv7l-linux-musleabihf.tar.xz
 i686-linux-musl.tar.xz
+loongarch64-linux-musl.tar.xz
 mips-linux-musl.tar.xz
 mips64-linux-musl.tar.xz
 mips64el-linux-musl.tar.xz
