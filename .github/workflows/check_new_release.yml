@@ -14,17 +14,13 @@ on:
         default: "1"
         type: choice
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
-  schedule:
-    - cron: "0 */3 * * *"
-
-permissions:
-  actions: write
-  contents: write
-  checks: read
 
 jobs:
   skip_duplicate_job:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -39,7 +35,11 @@ jobs:
   check_release:
     needs: skip_duplicate_job
     if: ${{ needs.skip_duplicate_job.outputs.should_skip != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: write
+      checks: read
     name: "Check for latest releases or tags"
     env:
       GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -47,6 +47,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install dependencies
         run: sudo apt-get install -y ssed
@@ -176,18 +178,22 @@ jobs:
       cancel-in-progress: true
     permissions:
       actions: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
       github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
+      retries: ${{ github.event.inputs.retries || '1' }}
+      distinct_id: ${{ github.event.inputs.distinct_id }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: ci-auto-rerun-failed-jobs via ${{ env.github_repo || github.repository }}
         run: >
-          gh workflow run ci-auto-rerun-failed-jobs.yml
-          --repo "${{ env.github_repo || github.repository }}"
-          -f github_repo=${{ github.repository }}
-          -f run_id=${{ github.run_id }}
-          -f attempts=${{ github.run_attempt }}
-          -f retries=${{ github.event.inputs.retries || '1' }}
-          -f distinct_id=${{ github.event.inputs.distinct_id }}
+          gh workflow run ci-auto-rerun-failed-jobs-action.yml
+          --repo "${github_repo:-$GITHUB_REPOSITORY}"
+          -f github_repo=${GITHUB_REPOSITORY}
+          -f run_id=${GITHUB_RUN_ID}
+          -f attempts=${GITHUB_RUN_ATTEMPT}
+          -f retries=${retries}
+          -f distinct_id=${distinct_id}

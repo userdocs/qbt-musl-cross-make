@@ -26,12 +26,14 @@ jobs:
     name: rerun - attempt ${{ inputs.attempts }}
     permissions:
       actions: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
     steps:
       - name: Host - Checkout action ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: userdocs/gh-cli-workflow-reruns/actions/auto-rerun-failed@main
         with:
