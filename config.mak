@@ -3,6 +3,6 @@ STAT = -static --static
 
 COMMON_CONFIG += CC="gcc ${STAT}" CXX="g++ ${STAT}" CFLAGS="${FLAG}" CXXFLAGS="${FLAG}" LDFLAGS="-s ${STAT}"
 
-BINUTILS_CONFIG += --disable-gprofng --enable-gold=yes --enable-lto --with-plugin
+BINUTILS_CONFIG += --disable-gprofng --enable-gold --enable-lto --with-plugin --enable-plugins
 GCC_CONFIG += --enable-default-pie --enable-static-pie --disable-cet --enable-lto --with-plugin
 GCC_CONFIG_FOR_TARGET +=

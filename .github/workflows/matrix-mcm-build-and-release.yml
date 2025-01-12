@@ -76,7 +76,7 @@ jobs:
 
       - name: Disable binutils gold for loongarch64
         if: matrix.arch_type == 'loongarch64-linux-musl'
-        run: sed "s| --enable-gold=yes||" -i config.mak
+        run: sed "s| --enable-gold||" -i config.mak
 
       - name: Show updated config.mak
         run: cat config.mak
