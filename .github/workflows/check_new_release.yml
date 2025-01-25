@@ -1,4 +1,4 @@
-name: qbt-musl-cross-make - check for new releases
+name: ci-check-new-release
 
 on:
   workflow_dispatch:
@@ -45,7 +45,7 @@ jobs:
       checks: read
     name: "Check for latest releases or tags"
     env:
-      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      GH_TOKEN: "${{ github.token}}"
       trigger_workflow: "no"
 
     steps:
@@ -157,22 +157,23 @@ jobs:
 
       - name: Commit and Push
         run: |
-          git add versions.json versions.mak hashes/*.sha1
-          git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' commit -m "Automated commit by GitHub Actions"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+          # Only run git commands if there are actual changes
+          if [[ -f "versions.json" ]] && [[ -f "versions.mak" ]] && [[ -d "hashes" ]]; then
+            git add versions.json versions.mak hashes/*.sha1 || true
+            git status --porcelain | grep -q . && {
+            git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' commit -m "Automated commit by GitHub Actions"
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+            } || echo "No changes detected"
+          fi
 
-      - name: Trigger workflow - matrix-mcm-build-and-release.yml
-        if: env.trigger_workflow == 'yes'
-        run: gh workflow run matrix-mcm-build-and-release.yml
-
-      - name: Await workflow - matrix-mcm-build-and-release.yml
+      - name: Await workflow - ci-matrix-mcm-build-and-release.yml
         if: env.trigger_workflow == 'yes'
         uses: codex-/await-local-workflow-run@v1
         with:
           token: ${{ github.token }}
-          workflow: "matrix-mcm-build-and-release.yml"
+          workflow: "ci-matrix-mcm-build-and-release.yml"
           timeout_mins: 60
-          poll_interval_ms: 10000
+          poll_interval_ms: 10000 # 10 seconds
 
   ci-auto-rerun-failed-jobs:
     if: failure() && (github.event.inputs.skip_rerun || 'false') == 'false'
@@ -186,7 +187,7 @@ jobs:
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
       github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
-      retries: ${{ github.event.inputs.retries || '1' }}
+      retries: ${{ github.event.inputs.retries || '3' }}
       distinct_id: ${{ github.event.inputs.distinct_id }}
     steps:
       - uses: actions/checkout@v4
