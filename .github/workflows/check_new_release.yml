@@ -152,10 +152,11 @@ jobs:
           ISL_VER = ${remote_versions[ISL_VER]}
           VERSIONS_MAK
 
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Automated Change
-          file_pattern: "versions.json versions.mak hashes/*.sha1"
+      - name: Commit and Push
+        run: |
+          git add versions.json versions.mak hashes/*.sha1
+          git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' commit -m "Automated commit by GitHub Actions"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
 
       - name: Trigger workflow - matrix-mcm-build-and-release.yml
         if: env.trigger_workflow == 'yes'
