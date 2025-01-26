@@ -27,10 +27,8 @@ RUN case "$TARGETPLATFORM" in \
 RUN adduser -h /home/username -Ds /bin/bash -u 1000 username \
 	&& printf '%s' 'username ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/username
 
-RUN adduser -h /home/github -Ds /bin/bash -u 1001 github \
-	&& printf '%s' 'github ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/github
+RUN adduser -h /home/gh -Ds /bin/bash -u 1001 gh \
+	&& printf '%s' 'gh ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/gh
 
-USER github
-VOLUME /home/github
 VOLUME /home/username
-WORKDIR /home/github
+VOLUME /home/gh
