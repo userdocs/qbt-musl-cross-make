@@ -21,36 +21,31 @@ jobs:
       matrix_arch_config: ${{ matrix.arch_config }}
       matrix_triple_prefix: ${{ matrix.triple_prefix }}
       matrix_docker_platform: ${{ matrix.docker_platform }}
+      container_name: mcm
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
-
-      - name: Host - phased updates
-        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+          persist-credentials: false]
 
       - name: Host - update
         run: sudo apt-get update
-
-      # - name: Host - upgrade
-      #   run: sudo apt-get -y upgrade
 
       - name: Host - set up qemu-user-static binfmt-support
         run: sudo apt install libpipeline1 qemu-user-static binfmt-support
 
       - name: Host - Create docker multiarch container
         run: |
-          docker run --name mcm -it -d -w /home/gh -v ${{ github.workspace }}:/home/gh ${matrix_alpine_prefix}/alpine:edge
-          docker exec mcm sh -c 'adduser -h /home/gh -Ds /bin/bash -u 1001 gh && apk add sudo'
-          docker exec mcm sh -c 'printf "%s" "gh ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/gh'
+          docker run --name ${container_name} -it -d -w /home/gh -v ${{ github.workspace }}:/home/gh ${matrix_alpine_prefix}/alpine:edge
+          docker exec ${container_name} sh -c 'adduser -h /home/gh -Ds /bin/bash -u 1001 gh && apk add sudo'
+          docker exec ${container_name} sh -c 'printf "%s" "gh ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/gh'
 
       - name: Docker - apk update
-        run: docker exec mcm apk update
+        run: docker exec ${container_name} apk update
 
       - name: Docker - apk install bash
-        run: docker exec mcm apk add -u --no-cache autoconf automake bash bison build-base curl findutils flex git libarchive-tools libtool linux-headers patch perl pkgconf rsync tar texinfo xz zip
+        run: docker exec ${container_name} apk add -u --no-cache autoconf automake bash bison build-base curl findutils flex git libarchive-tools libtool linux-headers patch perl pkgconf rsync tar texinfo xz zip
 
       - name: Host - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
         run: sed "s|GCC_CONFIG_FOR_TARGET +=|GCC_CONFIG_FOR_TARGET += ${matrix_arch_config}|" -i config.mak
@@ -63,7 +58,7 @@ jobs:
         run: cat config.mak
 
       - name: Docker - install ${{ matrix.arch_type }} toolchain
-        run: docker exec -u gh:gh mcm make -j"$(nproc)" install TARGET="${matrix_arch_type}" OUTPUT="/home/gh/build/${matrix_arch_type}"
+        run: docker exec -u gh:gh ${container_name} make -j"$(nproc)" install TARGET="${matrix_arch_type}" OUTPUT="/home/gh/build/${matrix_arch_type}"
 
       - name: Host - archive ${{ matrix.arch_type }} toolchain
         run: |
@@ -78,5 +73,5 @@ jobs:
       - name: Host - Docker - upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: "qbt-mcm-${{ matrix.triple_prefix }}-${{ matrix.arch_type }}"
+          name: "qbt-${{ env.container_name }}-${{ matrix.triple_prefix }}-${{ matrix.arch_type }}"
           path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
