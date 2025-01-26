@@ -27,7 +27,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          persist-credentials: false]
+          persist-credentials: false
 
       - name: Host - update
         run: sudo apt-get update
