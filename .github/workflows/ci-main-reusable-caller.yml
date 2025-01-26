@@ -21,12 +21,12 @@ on:
       skip_rerun:
         description: "Skip rerun?"
         required: true
-        default: true
+        default: false
         type: boolean
       retries:
         description: "Number of rerun retries"
         required: true
-        default: "2"
+        default: "3"
         type: choice
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
