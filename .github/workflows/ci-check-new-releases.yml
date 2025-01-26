@@ -1,52 +1,24 @@
-name: ci-check-new-release
+name: ci - check-new-release
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      skip_rerun:
-        description: "Skip rerun?"
-        required: true
-        default: false
-        type: boolean
-      retries:
-        description: "Number of rerun retries"
-        required: true
-        default: "1"
-        type: choice
-        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
-
-  schedule:
-    - cron: "0 */3 * * *"
+      bypass_check:
+        type: string
+        default: "false"
+    outputs:
+      build_new_release:
+        value: ${{ jobs.check_release.outputs.build_new_release }}
 
 jobs:
-  skip_duplicate_job:
-    runs-on: ubuntu-24.04-arm
-    permissions:
-      actions: write
-      contents: read
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-    steps:
-      - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5
-        with:
-          concurrent_skipping: "always"
-          cancel_others: "false"
-          skip_after_successful_duplicate: false
-          do_not_skip: ""
-
   check_release:
-    needs: skip_duplicate_job
-    if: ${{ needs.skip_duplicate_job.outputs.should_skip != 'true' }}
+    outputs:
+      build_new_release: ${{ steps.boot_strap_release.outputs.build_new_release }}
     runs-on: ubuntu-24.04-arm
-    permissions:
-      contents: write
-      actions: write
-      checks: read
-    name: "Check for latest releases or tags"
     env:
       GH_TOKEN: "${{ github.token}}"
-      trigger_workflow: "no"
+      build_new_release: "false"
+      bypass_check: ${{ inputs.bypass_check }}
 
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +29,7 @@ jobs:
         run: sudo apt-get install -y ssed
 
       - name: boot strap
+        id: boot_strap_release
         run: |
           until curl -sLf "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/versions.json" > remote_versions.json; do
             echo "waiting for URL."
@@ -109,7 +82,7 @@ jobs:
                 curl -sL "${remote_urls_dl[$iray]}" -o "${remote_urls_dl[$iray]##*/}"
                 sha1sum "${remote_urls_dl[$iray]##*/}" > "hashes/${remote_urls_dl[$iray]##*/}.sha1"
                 rm -f "${remote_urls_dl[$iray]##*/}"
-                echo "trigger_workflow=yes" >> $GITHUB_ENV
+                printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
               else
                 printf "%-14s current:%-10s remote:%-10s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
               fi
@@ -122,7 +95,7 @@ jobs:
                 if [[ "$iray" != "MUSL_VER" ]]; then
                   printf '%s' "$(curl -sL "${remote_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "hashes/config.sub.${remote_versions[CONFIG_SUB_REV]}.sha1"
                 fi
-                echo "trigger_workflow=yes" >> $GITHUB_ENV
+                printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
               else
                 printf "%-14s current:%-10s remote:%-10s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
               fi
@@ -155,7 +128,12 @@ jobs:
           ISL_VER = ${remote_versions[ISL_VER]}
           VERSIONS_MAK
 
+          if [[ ${bypass_check} == 'true' ]] ; then
+            printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Commit and Push
+        if: ${{ steps.boot_strap_release.outputs.build_new_release == 'true' }}
         run: |
           # Only run git commands if there are actual changes
           if [[ -f "versions.json" ]] && [[ -f "versions.mak" ]] && [[ -d "hashes" ]]; then
@@ -165,44 +143,3 @@ jobs:
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
             } || echo "No changes detected"
           fi
-
-      - name: Trigger workflow - ci-matrix-mcm-build-and-release.yml
-        if: env.trigger_workflow == 'yes'
-        run: gh workflow run ci-matrix-mcm-build-and-release.yml
-
-      - name: Await workflow - ci-matrix-mcm-build-and-release.yml
-        if: env.trigger_workflow == 'yes'
-        uses: codex-/await-local-workflow-run@v1
-        with:
-          token: ${{ github.token }}
-          workflow: ci-matrix-mcm-build-and-release.yml
-          timeout_mins: 60
-          poll_interval_ms: 10000 # 10 seconds
-
-  ci-auto-rerun-failed-jobs:
-    if: failure() && (github.event.inputs.skip_rerun || 'false') == 'false'
-    needs: [check_release]
-    concurrency:
-      group: ci-auto-rerun-failed-jobs
-      cancel-in-progress: true
-    permissions:
-      actions: write
-    runs-on: ubuntu-24.04-arm
-    env:
-      GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
-      github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
-      retries: ${{ github.event.inputs.retries || '3' }}
-      distinct_id: ${{ github.event.inputs.distinct_id }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: ci-auto-rerun-failed-jobs via ${{ env.github_repo || github.repository }}
-        run: >
-          gh workflow run ci-auto-rerun-failed-jobs-action.yml
-          --repo "${github_repo:-$GITHUB_REPOSITORY}"
-          -f github_repo=${GITHUB_REPOSITORY}
-          -f run_id=${GITHUB_RUN_ID}
-          -f attempts=${GITHUB_RUN_ATTEMPT}
-          -f retries=${retries}
-          -f distinct_id=${distinct_id}

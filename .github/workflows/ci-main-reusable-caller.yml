@@ -1,0 +1,192 @@
+name: ci - main reusable caller
+
+on:
+  workflow_dispatch:
+    inputs:
+      toolchains_only:
+        description: "Only toolchain jobs"
+        required: true
+        default: false
+        type: boolean
+      docker_only:
+        description: "Only docker jobs"
+        required: true
+        default: false
+        type: boolean
+      bypass_check:
+        description: "Bypass check to build new release?"
+        required: true
+        default: false
+        type: boolean
+      skip_rerun:
+        description: "Skip rerun?"
+        required: true
+        default: true
+        type: boolean
+      retries:
+        description: "Number of rerun retries"
+        required: true
+        default: "2"
+        type: choice
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+  # schedule:
+  #   - cron: "0 */3 * * *"
+
+permissions: {}
+
+jobs:
+  skip_duplicate_job:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      actions: write
+      contents: read
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          concurrent_skipping: "always"
+          cancel_others: "false"
+          skip_after_successful_duplicate: false
+          do_not_skip: ""
+
+  ci-check-new-releases:
+    if: github.event.inputs.bypass_check == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' && github.event.inputs.docker_only != 'true' && github.event.inputs.toolchains_only != 'true'
+    needs: [skip_duplicate_job]
+    concurrency:
+      group: ci-check-new-releases
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    uses: ./.github/workflows/ci-check-new-releases.yml
+    with:
+      bypass_check: ${{ github.event.inputs.bypass_check }}
+
+  bootstrap-matrix:
+    if: >
+      always() && !failure() && !cancelled()
+      && needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && needs.ci-check-new-releases.outputs.build_new_release == 'true' ||
+      ( github.event.inputs.docker_only == 'true' || github.event.inputs.toolchains_only == 'true' )
+    needs: [ci-check-new-releases]
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      mcm_build_matrix: ${{ steps.triples.outputs.mcm_build_matrix }}
+      docker_build_matrix: ${{ steps.triples.outputs.docker_build_matrix }}
+      docker_test_matrix: ${{ steps.triples.outputs.docker_test_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: bootstrap the matrix
+        id: triples
+        run: |
+          echo "mcm_build_matrix=$(jq -c . triples.json)" >> $GITHUB_OUTPUT
+          echo "docker_build_matrix=$(jq -c '{arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
+          echo "docker_test_matrix=$(jq -c '{build_host: [.build_host[]], arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
+
+  ci-mcm-build:
+    if: >
+      always() && !failure() && !cancelled() &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && ( needs.ci-check-new-releases.outputs.build_new_release == 'true' ||
+      github.event.inputs.docker_only != 'true' && github.event.inputs.toolchains_only != 'false' )
+    needs: [bootstrap-matrix]
+    concurrency:
+      group: ci-mcm-build
+      cancel-in-progress: true
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+    uses: ./.github/workflows/ci-mcm-build.yml
+    with:
+      mcm_build_matrix: ${{ needs.bootstrap-matrix.outputs.mcm_build_matrix }}
+
+  ci-mcm-release:
+    if: >
+      always() && !failure() && !cancelled() &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && ( needs.ci-check-new-releases.outputs.build_new_release == 'true'
+      || github.event.inputs.docker_only != 'true' && github.event.inputs.toolchains_only != 'false' )
+    needs: [ci-mcm-build]
+    concurrency:
+      group: ci-mcm-release
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    uses: ./.github/workflows/ci-mcm-release.yml
+
+  ci-docker-build:
+    if: >
+      always() && !failure() && !cancelled() &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && ( needs.ci-check-new-releases.outputs.build_new_release == 'true'
+      || github.event.inputs.docker_only != 'false' && github.event.inputs.toolchains_only != 'true' )
+    needs: [bootstrap-matrix, ci-mcm-release]
+    concurrency:
+      group: ci-docker-build
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+      attestations: write
+    uses: ./.github/workflows/ci-docker-build.yml
+    with:
+      docker_build_matrix: ${{ needs.bootstrap-matrix.outputs.docker_build_matrix }}
+
+  ci-docker-test:
+    if: >
+      always() && !failure() && !cancelled() &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && ( needs.ci-check-new-releases.outputs.build_new_release == 'true'
+      || github.event.inputs.docker_only != 'false' && github.event.inputs.toolchains_only != 'true' )
+    needs: [bootstrap-matrix, ci-docker-build]
+    concurrency:
+      group: ci-docker-test
+      cancel-in-progress: true
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci-docker-test.yml
+    with:
+      docker_test_matrix: ${{ needs.bootstrap-matrix.outputs.docker_test_matrix }}
+
+  ci-auto-rerun-failed-jobs:
+    if: failure() && (github.event.inputs.skip_rerun || 'false') == 'false'
+    needs:
+      [
+        skip_duplicate_job,
+        bootstrap-matrix,
+        ci-mcm-build,
+        ci-mcm-release,
+        ci-docker-build,
+        ci-docker-test,
+      ]
+    concurrency:
+      group: ci-auto-rerun-failed-jobs
+      cancel-in-progress: true
+    permissions:
+      actions: write
+    runs-on: ubuntu-24.04-arm
+    env:
+      GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
+      github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
+      retries: ${{ github.event.inputs.retries || '1' }}
+      distinct_id: ${{ github.event.inputs.distinct_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: ci-auto-rerun-failed-jobs via ${{ env.github_repo || github.repository }}
+        run: >
+          gh workflow run ci-auto-rerun-failed-jobs-action.yml
+          --repo "${github_repo:-$GITHUB_REPOSITORY}"
+          -f github_repo=${GITHUB_REPOSITORY}
+          -f run_id=${GITHUB_RUN_ID}
+          -f attempts=${GITHUB_RUN_ATTEMPT}
+          -f retries=${retries}
+          -f distinct_id=${distinct_id}

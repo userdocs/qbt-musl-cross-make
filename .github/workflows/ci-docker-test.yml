@@ -1,0 +1,23 @@
+name: ci - docker-test
+
+on:
+  workflow_call:
+    inputs:
+      docker_test_matrix:
+        description: "Json matrix for docker test"
+        required: true
+        type: string
+
+jobs:
+  docker-test:
+    runs-on: ${{ matrix.build_host }}
+    container: ghcr.io/userdocs/qbt-musl-cross-make:${{ matrix.arch_type }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(inputs.docker_test_matrix) }}
+
+    steps:
+      - name: file gcc
+        env:
+          arch_type: ${{ matrix.arch_type }}
+        run: file /usr/local/bin/${arch_type}-gcc

@@ -1,48 +1,26 @@
-name: ci-matrix-mcm-build-and-release
+name: ci - mcm-build
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      docker_only:
-        description: "Docker job only"
+      mcm_build_matrix:
+        description: "Json matrix for mcm build"
         required: true
-        default: false
-        type: boolean
+        type: string
 
 jobs:
-  bootstrap-matrix:
-    runs-on: ubuntu-24.04-arm
-    permissions:
-      contents: read
-    outputs:
-      matrix_includes: ${{ steps.triples.outputs.matrix_includes }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: bootstrap the matrix
-        id: triples
-        run: echo "matrix_includes=$(jq -c . triples.json)" >> $GITHUB_OUTPUT
-
-  build:
-    needs: [bootstrap-matrix]
+  mcm-build:
+    name: ${{ matrix.triple_prefix }}-${{ matrix.arch_type }}
     runs-on: ${{ matrix.build_host }}
-    permissions:
-      id-token: write
-      contents: read
-      attestations: write
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.bootstrap-matrix.outputs.matrix_includes) }}
+      matrix: ${{ fromJSON(inputs.mcm_build_matrix) }}
     env:
       matrix_alpine_prefix: ${{ matrix.alpine_prefix }}
       matrix_arch_type: ${{ matrix.arch_type }}
       matrix_arch_config: ${{ matrix.arch_config }}
       matrix_triple_prefix: ${{ matrix.triple_prefix }}
       matrix_docker_platform: ${{ matrix.docker_platform }}
-
-    name: build ${{ matrix.triple_prefix }}-${{ matrix.arch_type }}
 
     steps:
       - name: Checkout
@@ -64,9 +42,9 @@ jobs:
 
       - name: Host - Create docker multiarch container
         run: |
-          docker run --name mcm -it -d -w /home/github -v ${{ github.workspace }}:/home/github ${matrix_alpine_prefix}/alpine:edge
-          docker exec mcm sh -c 'adduser -h /home/github -Ds /bin/bash -u 1001 github && apk add sudo'
-          docker exec mcm sh -c 'printf "%s" "github ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/github'
+          docker run --name mcm -it -d -w /home/gh -v ${{ github.workspace }}:/home/gh ${matrix_alpine_prefix}/alpine:edge
+          docker exec mcm sh -c 'adduser -h /home/gh -Ds /bin/bash -u 1001 gh && apk add sudo'
+          docker exec mcm sh -c 'printf "%s" "gh ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/gh'
 
       - name: Docker - apk update
         run: docker exec mcm apk update
@@ -85,7 +63,7 @@ jobs:
         run: cat config.mak
 
       - name: Docker - install ${{ matrix.arch_type }} toolchain
-        run: docker exec -u github:github mcm make -j"$(nproc)" install TARGET="${matrix_arch_type}" OUTPUT="/home/github/build/${matrix_arch_type}"
+        run: docker exec -u gh:gh mcm make -j"$(nproc)" install TARGET="${matrix_arch_type}" OUTPUT="/home/gh/build/${matrix_arch_type}"
 
       - name: Host - archive ${{ matrix.arch_type }} toolchain
         run: |
@@ -102,41 +80,3 @@ jobs:
         with:
           name: "qbt-mcm-${{ matrix.triple_prefix }}-${{ matrix.arch_type }}"
           path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
-
-  release:
-    name: Upload artifacts to release
-    runs-on: ubuntu-24.04-arm
-    needs: [build]
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Host - Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: qbt-mcm
-          pattern: qbt-mcm-*
-          merge-multiple: true
-
-      - name: set release info from versions.mak
-        run: |
-          cp -f versions.mak release_body.md
-          jq -R 'split(" = ") | {(.[0]):.[1]}' versions.mak | jq -s 'add' > versions.json
-
-      - name: set tag via date
-        run: echo "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
-
-      - name: Create release - tag - assets
-        uses: ncipollo/release-action@v1
-        with:
-          prerelease: false
-          artifacts: "qbt-mcm/*.tar.xz,versions.json"
-          replacesArtifacts: true
-          tag: "${{ env.github_tag }}"
-          name: "qbt-musl-cross-make toolchains"
-          bodyFile: release_body.md
-          allowUpdates: true
