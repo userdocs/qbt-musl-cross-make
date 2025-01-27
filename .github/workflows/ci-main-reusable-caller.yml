@@ -55,9 +55,50 @@ jobs:
           skip_after_successful_duplicate: false
           do_not_skip: ""
 
-  ci-check-new-releases:
-    if: github.event.inputs.bypass_check != 'true' && needs.skip_duplicate_job.outputs.should_skip != 'true' && github.event.inputs.docker_only != 'true' && github.event.inputs.toolchains_only != 'true'
+  scheduled_defaults:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
     needs: [skip_duplicate_job]
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      toolchains_only: ${{ github.event.inputs.toolchains_only || 'false' }}
+      docker_only: ${{ github.event.inputs.docker_only || 'false' }}
+      bypass_check: ${{ github.event.inputs.bypass_check || 'false' }}
+      skip_rerun: ${{ github.event.inputs.skip_rerun || 'false' }}
+      retries: ${{ github.event.inputs.retries || '3' }}
+    steps:
+      - name: Setting Outputs from inputs
+        run: |
+          printf '%b\n\n' "Setting Outputs from Inputs"
+
+  show_outputs:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true' && github.event_name != 'workflow_dispatch'
+    needs: [skip_duplicate_job, scheduled_defaults]
+    runs-on: ubuntu-24.04-arm
+    env:
+      toolchains_only: ${{ needs.scheduled_defaults.outputs.toolchains_only }}
+      docker_only: ${{ needs.scheduled_defaults.outputs.docker_only }}
+      bypass_check: ${{ needs.scheduled_defaults.outputs.bypass_check }}
+      skip_rerun: ${{ needs.scheduled_defaults.outputs.skip_rerun }}
+      retries: ${{ needs.scheduled_defaults.outputs.retries }}
+    steps:
+      - name: Set output
+        run: |
+          printf '%b\n' "# Scheduled Defaults Outputs Summary" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' ":octocat: Here is a summary of inputs set as string outputs that are used in workflows." >> $GITHUB_STEP_SUMMARY
+
+          printf '\n%b\n' "toolchains_only: \`${toolchains_only}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "docker_only: \`${docker_only}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "bypass_check: \`${bypass_check}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "skip_rerun: \`${skip_rerun}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "retries: \`${retries}\`" >> $GITHUB_STEP_SUMMARY
+
+  ci-check-new-releases:
+    if: >
+      needs.skip_duplicate_job.outputs.should_skip != 'true' &&
+      needs.scheduled_defaults.outputs.bypass_check == 'false' &&
+      needs.scheduled_defaults.outputs.docker_only == 'false' &&
+      needs.scheduled_defaults.outputs.toolchains_only == 'false'
+    needs: [skip_duplicate_job, scheduled_defaults]
     concurrency:
       group: ci-check-new-releases
       cancel-in-progress: true
@@ -65,15 +106,15 @@ jobs:
       contents: write
     uses: ./.github/workflows/ci-check-new-releases.yml
     with:
-      bypass_check: ${{ github.event.inputs.bypass_check }}
+      bypass_check: ${{ needs.scheduled_defaults.outputs.bypass_check }}
 
   bootstrap-matrix:
     if: >
       always() && !failure() && !cancelled()
       && needs.skip_duplicate_job.outputs.should_skip != 'true'
       && needs.ci-check-new-releases.outputs.build_new_release == 'true' ||
-      ( github.event.inputs.docker_only == 'true' || github.event.inputs.toolchains_only == 'true' )
-    needs: [ci-check-new-releases]
+      ( needs.scheduled_defaults.outputs.docker_only == 'true' || needs.scheduled_defaults.outputs.toolchains_only == 'true' )
+    needs: [skip_duplicate_job, scheduled_defaults, ci-check-new-releases]
     runs-on: ubuntu-24.04-arm
     outputs:
       mcm_build_matrix: ${{ steps.triples.outputs.mcm_build_matrix }}
@@ -96,8 +137,8 @@ jobs:
       always() && !failure() && !cancelled() &&
       needs.skip_duplicate_job.outputs.should_skip != 'true'
       && ( needs.ci-check-new-releases.outputs.build_new_release == 'true' ||
-      github.event.inputs.docker_only != 'true' && github.event.inputs.toolchains_only != 'false' )
-    needs: [bootstrap-matrix]
+      needs.scheduled_defaults.outputs.docker_only != 'true' && needs.scheduled_defaults.outputs.toolchains_only != 'false' )
+    needs: [skip_duplicate_job, scheduled_defaults, bootstrap-matrix]
     concurrency:
       group: ci-mcm-build
       cancel-in-progress: true
@@ -114,8 +155,8 @@ jobs:
       always() && !failure() && !cancelled() &&
       needs.skip_duplicate_job.outputs.should_skip != 'true'
       && ( needs.ci-check-new-releases.outputs.build_new_release == 'true'
-      || github.event.inputs.docker_only != 'true' && github.event.inputs.toolchains_only != 'false' )
-    needs: [ci-mcm-build]
+      || needs.scheduled_defaults.outputs.docker_only != 'true' && needs.scheduled_defaults.outputs.toolchains_only != 'false' )
+    needs: [skip_duplicate_job, scheduled_defaults, ci-mcm-build]
     concurrency:
       group: ci-mcm-release
       cancel-in-progress: true
@@ -128,8 +169,9 @@ jobs:
       always() && !failure() && !cancelled() &&
       needs.skip_duplicate_job.outputs.should_skip != 'true'
       && ( needs.ci-check-new-releases.outputs.build_new_release == 'true'
-      || github.event.inputs.docker_only != 'false' && github.event.inputs.toolchains_only != 'true' )
-    needs: [bootstrap-matrix, ci-mcm-release]
+      || needs.scheduled_defaults.outputs.docker_only != 'false' && needs.scheduled_defaults.outputs.toolchains_only != 'true' )
+    needs:
+      [skip_duplicate_job, scheduled_defaults, bootstrap-matrix, ci-mcm-release]
     concurrency:
       group: ci-docker-build
       cancel-in-progress: true
@@ -147,8 +189,14 @@ jobs:
       always() && !failure() && !cancelled() &&
       needs.skip_duplicate_job.outputs.should_skip != 'true'
       && ( needs.ci-check-new-releases.outputs.build_new_release == 'true'
-      || github.event.inputs.docker_only != 'false' && github.event.inputs.toolchains_only != 'true' )
-    needs: [bootstrap-matrix, ci-docker-build]
+      || needs.scheduled_defaults.outputs.docker_only != 'false' && needs.scheduled_defaults.outputs.toolchains_only != 'true' )
+    needs:
+      [
+        skip_duplicate_job,
+        scheduled_defaults,
+        bootstrap-matrix,
+        ci-docker-build,
+      ]
     concurrency:
       group: ci-docker-test
       cancel-in-progress: true
@@ -159,10 +207,11 @@ jobs:
       docker_test_matrix: ${{ needs.bootstrap-matrix.outputs.docker_test_matrix }}
 
   ci-auto-rerun-failed-jobs:
-    if: failure() && (github.event.inputs.skip_rerun || 'false') == 'false'
+    if: failure() && (needs.scheduled_defaults.outputs.skip_rerun || 'false') == 'false'
     needs:
       [
         skip_duplicate_job,
+        scheduled_defaults,
         bootstrap-matrix,
         ci-mcm-build,
         ci-mcm-release,
@@ -178,7 +227,7 @@ jobs:
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
       github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
-      retries: ${{ github.event.inputs.retries || '1' }}
+      retries: ${{ needs.scheduled_defaults.outputs.retries || '3' }}
       distinct_id: ${{ github.event.inputs.distinct_id }}
     steps:
       - uses: actions/checkout@v4
