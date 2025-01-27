@@ -56,7 +56,7 @@ jobs:
           do_not_skip: ""
 
   ci-check-new-releases:
-    if: github.event.inputs.bypass_check == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' && github.event.inputs.docker_only != 'true' && github.event.inputs.toolchains_only != 'true'
+    if: github.event.inputs.bypass_check != 'true' && needs.skip_duplicate_job.outputs.should_skip != 'true' && github.event.inputs.docker_only != 'true' && github.event.inputs.toolchains_only != 'true'
     needs: [skip_duplicate_job]
     concurrency:
       group: ci-check-new-releases
