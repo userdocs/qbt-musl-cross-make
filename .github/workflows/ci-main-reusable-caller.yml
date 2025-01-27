@@ -71,7 +71,7 @@ jobs:
           printf '%b\n\n' "Setting Outputs from Inputs"
 
   show_outputs:
-    if: needs.skip_duplicate_job.outputs.should_skip != 'true' && github.event_name != 'workflow_dispatch'
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
     needs: [skip_duplicate_job, scheduled_defaults]
     runs-on: ubuntu-24.04-arm
     env:
