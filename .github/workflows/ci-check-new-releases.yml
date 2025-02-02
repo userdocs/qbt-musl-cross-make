@@ -47,8 +47,8 @@ jobs:
               printf '%s\n' "savannah.gnu.org is not reachable, using jq to get config.sub commit hash of current version"
           fi
 
-          # mirror_url="https://mirrors.dotsrc.org/gnu"
-          mirror_url="https://ftp.snt.utwente.nl/pub/software/gnu/"
+          # gnu_mirror_url="https://mirrors.dotsrc.org/gnu"
+          gnu_mirror_url="https://ftp.snt.utwente.nl/pub/software/gnu/"
 
           declare -A remote_versions
           remote_versions[CONFIG_SUB_REV]="$(git ls-remote "https://git.savannah.gnu.org/git/config.git" | head -n1 | awk '{ print substr($1,1,8) }')"
