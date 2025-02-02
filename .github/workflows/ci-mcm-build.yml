@@ -50,9 +50,9 @@ jobs:
       - name: Host - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
         run: sed "s|GCC_CONFIG_FOR_TARGET +=|GCC_CONFIG_FOR_TARGET += ${matrix_arch_config}|" -i config.mak
 
-      - name: Host - Disable binutils gold for loongarch64
-        if: matrix.arch_type == 'loongarch64-linux-musl'
-        run: sed "s| --enable-gold||" -i config.mak
+      # - name: Host - Disable binutils gold for loongarch64
+      #   if: matrix.arch_type == 'loongarch64-linux-musl'
+      #   run: sed "s| --enable-gold||" -i config.mak
 
       - name: Host -  Show updated config.mak
         run: cat config.mak
