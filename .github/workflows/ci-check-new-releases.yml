@@ -5,7 +5,10 @@ on:
     inputs:
       bypass_check:
         type: string
-        default: "false"
+        required: false
+      gnu_mirror_url:
+        required: true
+        type: string
     outputs:
       build_new_release:
         value: ${{ jobs.check_release.outputs.build_new_release }}
@@ -19,10 +22,12 @@ jobs:
       GH_TOKEN: "${{ github.token}}"
       build_new_release: "false"
       bypass_check: ${{ inputs.bypass_check }}
+      gnu_mirror_url: ${{ inputs.gnu_mirror_url }}
 
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - name: Install dependencies
@@ -36,22 +41,19 @@ jobs:
             sleep 2
           done
 
+          if curl -sLIo /dev/null --fail "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD"; then
+              config_sub="$(git ls-remote "https://git.savannah.gnu.org/git/config.git" | head -n1 | awk '{ print substr($1,1,8) }')"
+              printf '%s\n' "savannah.gnu.org is reachable, using git to get config.sub commit hash of remote version"
+          else
+              config_sub="$(jq -r .CONFIG_SUB_REV versions.json)"
+              printf '%s\n' "savannah.gnu.org is unreachable (again), using jq to get config.sub commit hash of current version"
+          fi
+
           declare -A current_versions
           eval "$(jq -r 'to_entries[]|@sh"current_versions[\(.key)]=\(.value)"' remote_versions.json)"
 
-          if curl -sLIo /dev/null --fail "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD"; then
-              config_sub="$(git ls-remote "https://git.savannah.gnu.org/git/config.git" | head -n1 | awk '{ print substr($1,1,8) }')"
-              printf '%s\n' "savannah.gnu.org is reachable, using git to get config.sub commit hash"
-          else
-              config_sub="$(jq -r .CONFIG_SUB_REV versions.json)"
-              printf '%s\n' "savannah.gnu.org is not reachable, using jq to get config.sub commit hash of current version"
-          fi
-
-          # gnu_mirror_url="https://mirrors.dotsrc.org/gnu"
-          gnu_mirror_url="https://ftp.snt.utwente.nl/pub/software/gnu/"
-
           declare -A remote_versions
-          remote_versions[CONFIG_SUB_REV]="$(git ls-remote "https://git.savannah.gnu.org/git/config.git" | head -n1 | awk '{ print substr($1,1,8) }')"
+          remote_versions[CONFIG_SUB_REV]="${config_sub}"
           remote_versions[GCC_VER]="$(curl -sL "${gnu_mirror_url}/gcc/" | ssed -Rn 's|(.*)href="gcc-(.+?)/"(.*)|\2|p' | sort -V | tail -n1)"
           remote_versions[BINUTILS_VER]="$(curl -sL "${gnu_mirror_url}/binutils/" | ssed -Rn 's|(.*)href="binutils-([0-9]+\.[0-9]+)\.tar\.xz"(.*)|\2|p' | tail -n1)"
           remote_versions[MUSL_VER]=git-"$(git ls-remote "https://git.musl-libc.org/git/musl" | head -n1 | awk '{ print substr($1,1,8) }')"
@@ -89,26 +91,26 @@ jobs:
           for iray in "${!current_versions[@]}"; do
             if [[ ! "$iray" =~ ^(CONFIG_SUB_REV|MUSL_VER)$ ]]; then
               if [[ "$(ver "${current_versions[$iray]}")" -lt "$(ver "${remote_versions[$iray]}")" ]]; then
-                printf "%-14s current:%-10s remote:%-10s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
+                printf "%-14s current:%-15s remote:%-15s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
                 curl -sL "${remote_urls_dl[$iray]}" -o "${remote_urls_dl[$iray]##*/}"
                 sha1sum "${remote_urls_dl[$iray]##*/}" > "hashes/${remote_urls_dl[$iray]##*/}.sha1"
                 rm -f "${remote_urls_dl[$iray]##*/}"
                 printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
               else
-                printf "%-14s current:%-10s remote:%-10s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
+                printf "%-14s current:%-15s remote:%-15s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
               fi
             fi
 
             if [[ "$iray" =~ ^(CONFIG_SUB_REV|MUSL_VER)$ ]]; then
               if [[ "${current_versions[$iray]}" != "${remote_versions[$iray]}" ]]; then
-                printf "%-14s current:%-10s remote:%-10s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
+                printf "%-14s current:%-15s remote:%-15s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
 
                 if [[ "$iray" != "MUSL_VER" ]]; then
                   printf '%s' "$(curl -sL "${remote_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "hashes/config.sub.${remote_versions[CONFIG_SUB_REV]}.sha1"
                 fi
                 printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
               else
-                printf "%-14s current:%-10s remote:%-10s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
+                printf "%-14s current:%-15s remote:%-15s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
               fi
             fi
           done

@@ -7,6 +7,10 @@ on:
         description: "Json matrix for mcm build"
         required: true
         type: string
+      gnu_mirror_url:
+        description: "URL for GNU mirror"
+        required: true
+        type: string
 
 jobs:
   mcm-build:
@@ -22,12 +26,19 @@ jobs:
       matrix_triple_prefix: ${{ matrix.triple_prefix }}
       matrix_docker_platform: ${{ matrix.docker_platform }}
       container_name: mcm
+      gnu_mirror_url: ${{ inputs.gnu_mirror_url }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
+
+      - name: cat versions.json versions.mak
+        run: |
+          cat versions.json
+          cat versions.mak
 
       - name: Host - update
         run: sudo apt-get update
@@ -37,7 +48,7 @@ jobs:
 
       - name: Host - Create docker multiarch container
         run: |
-          docker run --name ${container_name} -it -d -w /home/gh -v ${{ github.workspace }}:/home/gh ${matrix_alpine_prefix}/alpine:edge
+          docker run --name ${container_name} -it -d -e "GNU_MIRROR_URL=${gnu_mirror_url}" -w /home/gh -v ${{ github.workspace }}:/home/gh ${matrix_alpine_prefix}/alpine:edge
           docker exec ${container_name} sh -c 'adduser -h /home/gh -Ds /bin/bash -u 1001 gh && apk add sudo'
           docker exec ${container_name} sh -c 'printf "%s" "gh ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/gh'
 
