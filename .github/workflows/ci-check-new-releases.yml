@@ -39,14 +39,25 @@ jobs:
           declare -A current_versions
           eval "$(jq -r 'to_entries[]|@sh"current_versions[\(.key)]=\(.value)"' remote_versions.json)"
 
+          if curl -sLIo /dev/null --fail "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD"; then
+              config_sub="$(git ls-remote "https://git.savannah.gnu.org/git/config.git" | head -n1 | awk '{ print substr($1,1,8) }')"
+              printf '%s\n' "savannah.gnu.org is reachable, using git to get config.sub commit hash"
+          else
+              config_sub="$(jq -r .CONFIG_SUB_REV versions.json)"
+              printf '%s\n' "savannah.gnu.org is not reachable, using jq to get config.sub commit hash of current version"
+          fi
+
+          # mirror_url="https://mirrors.dotsrc.org/gnu"
+          mirror_url="https://ftp.snt.utwente.nl/pub/software/gnu/"
+
           declare -A remote_versions
           remote_versions[CONFIG_SUB_REV]="$(git ls-remote "https://git.savannah.gnu.org/git/config.git" | head -n1 | awk '{ print substr($1,1,8) }')"
-          remote_versions[GCC_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/gcc/" | ssed -Rn 's|(.*)href="gcc-(.+?)/"(.*)|\2|p' | sort -V | tail -n1)"
-          remote_versions[BINUTILS_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/binutils/" | ssed -Rn 's|(.*)href="binutils-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
+          remote_versions[GCC_VER]="$(curl -sL "${gnu_mirror_url}/gcc/" | ssed -Rn 's|(.*)href="gcc-(.+?)/"(.*)|\2|p' | sort -V | tail -n1)"
+          remote_versions[BINUTILS_VER]="$(curl -sL "${gnu_mirror_url}/binutils/" | ssed -Rn 's|(.*)href="binutils-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
           remote_versions[MUSL_VER]=git-"$(git ls-remote "https://git.musl-libc.org/git/musl" | head -n1 | awk '{ print substr($1,1,8) }')"
-          remote_versions[GMP_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/gmp/" | ssed -Rn 's|(.*)href="gmp-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
-          remote_versions[MPC_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
-          remote_versions[MPFR_VER]="$(curl -sL "https://mirrors.dotsrc.org/gnu/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
+          remote_versions[GMP_VER]="$(curl -sL "${gnu_mirror_url}/gmp/" | ssed -Rn 's|(.*)href="gmp-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
+          remote_versions[MPC_VER]="$(curl -sL "${gnu_mirror_url}/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
+          remote_versions[MPFR_VER]="$(curl -sL "${gnu_mirror_url}/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
           remote_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | ssed -Rn 's|(.*)href="linux-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | head -n1)"
           remote_versions[ISL_VER]="$(curl -sL https://libisl.sourceforge.io | ssed -Rn 's|(.*)href="isl-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
 
@@ -60,12 +71,12 @@ jobs:
 
           declare -A remote_urls_dl
           remote_urls_dl[CONFIG_SUB_REV]="https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=${remote_versions[CONFIG_SUB_REV]}"
-          remote_urls_dl[GCC_VER]="https://mirrors.dotsrc.org/gnu/gcc/gcc-${remote_versions[GCC_VER]}/gcc-${remote_versions[GCC_VER]}.tar.xz"
-          remote_urls_dl[BINUTILS_VER]="https://mirrors.dotsrc.org/gnu/binutils/binutils-${remote_versions[BINUTILS_VER]}.tar.xz"
+          remote_urls_dl[GCC_VER]="${gnu_mirror_url}/gcc/gcc-${remote_versions[GCC_VER]}/gcc-${remote_versions[GCC_VER]}.tar.xz"
+          remote_urls_dl[BINUTILS_VER]="${gnu_mirror_url}/binutils/binutils-${remote_versions[BINUTILS_VER]}.tar.xz"
           remote_urls_dl[MUSL_VER]=""
-          remote_urls_dl[GMP_VER]="https://mirrors.dotsrc.org/gnu/gmp/gmp-${remote_versions[GMP_VER]}.tar.xz"
-          remote_urls_dl[MPC_VER]="https://mirrors.dotsrc.org/gnu/mpc/mpc-${remote_versions[MPC_VER]}.tar.gz"
-          remote_urls_dl[MPFR_VER]="https://mirrors.dotsrc.org/gnu/mpfr/mpfr-${remote_versions[MPFR_VER]}.tar.xz"
+          remote_urls_dl[GMP_VER]="${gnu_mirror_url}/gmp/gmp-${remote_versions[GMP_VER]}.tar.xz"
+          remote_urls_dl[MPC_VER]="${gnu_mirror_url}/mpc/mpc-${remote_versions[MPC_VER]}.tar.gz"
+          remote_urls_dl[MPFR_VER]="${gnu_mirror_url}/mpfr/mpfr-${remote_versions[MPFR_VER]}.tar.xz"
           remote_urls_dl[LINUX_VER]="https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/linux-${remote_versions[LINUX_VER]}.tar.xz"
           remote_urls_dl[ISL_VER]="https://libisl.sourceforge.io/isl-${remote_versions[ISL_VER]}.tar.xz"
 
