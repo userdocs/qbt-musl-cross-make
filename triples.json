@@ -96,7 +96,7 @@
             },
             {
               "arch_type": "loongarch64-linux-musl",
-              "arch_config": "--with-arch=loongarch64 --with-abi=lp64d"
+              "arch_config": "--with-arch=la64v1.0 --with-abi=lp64d"
             }
           ]
         }

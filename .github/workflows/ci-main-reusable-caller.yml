@@ -100,7 +100,6 @@ jobs:
   ci-check-new-releases:
     if: >
       needs.skip_duplicate_job.outputs.should_skip != 'true' &&
-      needs.scheduled_defaults.outputs.bypass_check == 'false' &&
       needs.scheduled_defaults.outputs.docker_only == 'false' &&
       needs.scheduled_defaults.outputs.toolchains_only == 'false'
     needs: [skip_duplicate_job, scheduled_defaults]
