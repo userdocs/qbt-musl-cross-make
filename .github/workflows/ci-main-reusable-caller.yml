@@ -62,7 +62,7 @@ jobs:
     needs: [skip_duplicate_job]
     runs-on: ubuntu-24.04-arm
     outputs:
-      gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url }}
+      gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url || 'https://ftp.snt.utwente.nl/pub/software/gnu'  }}
       toolchains_only: ${{ github.event.inputs.toolchains_only || 'false' }}
       docker_only: ${{ github.event.inputs.docker_only || 'false' }}
       bypass_check: ${{ github.event.inputs.bypass_check || 'false' }}
