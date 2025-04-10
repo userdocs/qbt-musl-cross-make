@@ -25,9 +25,11 @@ LINKER_FLAGS = \
     -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries
 
 # Static Linking Flags
-STATIC_FLAGS = -static
+STATIC_FLAGS = -static --static
 
 # Compiler configurations
+COMMON_CONFIG += CC="gcc ${STATIC_FLAGS}"
+COMMON_CONFIG += CXX="g++ ${STATIC_FLAGS}"
 COMMON_CONFIG += CFLAGS="${OPTIMIZATION_FLAGS} ${SECURITY_FLAGS} ${STATIC_FLAGS}"
 COMMON_CONFIG += CXXFLAGS="${OPTIMIZATION_FLAGS} ${SECURITY_FLAGS} ${STATIC_FLAGS} ${WARNING_FLAGS}"
 COMMON_CONFIG += CPPFLAGS="${PREPROCESSOR_FLAGS} ${WARNING_FLAGS}"
