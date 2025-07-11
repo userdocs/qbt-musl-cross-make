@@ -59,4 +59,4 @@ jobs:
           no-cache: true
           build-args: |
             ARCH=${{ matrix.arch_type }}
-            BASE_URL=https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download
+            BASE_URL=https://github.com/${{ github.repository }}/releases/latest/download

@@ -36,14 +36,20 @@ jobs:
       - name: boot strap
         id: boot_strap_release
         run: |
-          until curl -sLf "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/versions.json" > remote_versions.json; do
-            echo "waiting for URL."
-            sleep 2
-          done
+          if curl -sLIf "https://github.com/${{ github.repository }}/releases/latest/download/versions.json" &> /dev/null; then
+              until curl -sLf "https://github.com/${{ github.repository }}/releases/latest/download/versions.json" > remote_versions.json; do
+                echo "waiting for URL."
+                sleep 2
+              done
+          else
+              cp -f versions.json remote_versions.json
+              use_local_config_sub="yes"
+          fi
 
           if curl -sLIo /dev/null --fail "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD"; then
               config_sub="$(git ls-remote "https://git.savannah.gnu.org/git/config.git" | head -n1 | awk '{ print substr($1,1,8) }')"
               printf '%s\n' "savannah.gnu.org is reachable, using git to get config.sub commit hash of remote version"
+              curl -sL "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD" -o config.sub
           else
               config_sub="$(jq -r .CONFIG_SUB_REV versions.json)"
               printf '%s\n' "savannah.gnu.org is unreachable (again), using jq to get config.sub commit hash of current version"
@@ -106,8 +112,11 @@ jobs:
                 printf "%-14s current:%-15s remote:%-15s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
 
                 if [[ "$iray" != "MUSL_VER" ]]; then
-                  printf '%s' "$(curl -sL "${remote_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "hashes/config.sub.${remote_versions[CONFIG_SUB_REV]}.sha1"
+                  if [[ -z "${use_local_config_sub}" ]]; then
+                      printf '%s' "$(curl -sL "${remote_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "hashes/config.sub.${remote_versions[CONFIG_SUB_REV]}.sha1"
+                  fi
                 fi
+
                 printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
               else
                 printf "%-14s current:%-15s remote:%-15s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
@@ -149,8 +158,8 @@ jobs:
         if: ${{ steps.boot_strap_release.outputs.build_new_release == 'true' }}
         run: |
           # Only run git commands if there are actual changes
-          if [[ -f "versions.json" ]] && [[ -f "versions.mak" ]] && [[ -d "hashes" ]]; then
-            git add versions.json versions.mak hashes/*.sha1 || true
+          if [[ -f "versions.json" ]] && [[ -f "versions.mak" ]] && [[ -d "hashes" ]] && [[ -f "config.sub" ]]; then
+            git add versions.json versions.mak hashes/*.sha1 config.sub || true
             git status --porcelain | grep -q . && {
             git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' commit -m "Automated commit by GitHub Actions"
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main

@@ -56,14 +56,13 @@ jobs:
         run: docker exec ${container_name} apk update
 
       - name: Docker - apk install bash
-        run: docker exec ${container_name} apk add -u --no-cache autoconf automake bash bison build-base curl findutils flex git libarchive-tools libtool linux-headers patch perl pkgconf rsync tar texinfo xz zip
+        run: docker exec ${container_name} apk add -u --no-cache autoconf automake bash bison build-base curl findutils flex git libarchive-tools libtool linux-headers patch perl pkgconf rsync tar texinfo xz zip zlib-dev zlib-static
 
       - name: Host - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
         run: sed "s|GCC_CONFIG_FOR_TARGET +=|GCC_CONFIG_FOR_TARGET += ${matrix_arch_config}|" -i config.mak
 
-      # - name: Host - Disable binutils gold for loongarch64
-      #   if: matrix.arch_type == 'loongarch64-linux-musl'
-      #   run: sed "s| --enable-gold||" -i config.mak
+      - name: Host - cowpatch
+        run: docker exec ${container_name} chmod +x cowpatch.sh
 
       - name: Host -  Show updated config.mak
         run: cat config.mak
