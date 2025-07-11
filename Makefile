@@ -63,7 +63,11 @@ $(SOURCES):
 
 $(SOURCES)/config.sub: | $(SOURCES)
 	mkdir -p $@.tmp
-	cd $@.tmp && $(DL_CMD) $(notdir $@) "https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=$(CONFIG_SUB_REV)"
+	if test -f $(CURDIR)/config.sub.$(CONFIG_SUB_REV); then \
+		cp $(CURDIR)/config.sub.$(CONFIG_SUB_REV) $@.tmp/$(notdir $@); \
+	else \
+		cd $@.tmp && $(DL_CMD) $(notdir $@) "https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=$(CONFIG_SUB_REV)"; \
+	fi
 	cd $@.tmp && touch $(notdir $@)
 	cd $@.tmp && $(SHA1_CMD) $(CURDIR)/hashes/$(notdir $@).$(CONFIG_SUB_REV).sha1
 	mv $@.tmp/$(notdir $@) $@
