@@ -1,17 +1,7 @@
 SOURCES = sources
 
 -include versions.mak
-
-GNU_SITE := $(if $(GNU_MIRROR_URL),$(GNU_MIRROR_URL),https://mirrors.dotsrc.org/gnu/)
-GCC_SITE = $(GNU_SITE)/gcc
-BINUTILS_SITE = $(GNU_SITE)/binutils
-GMP_SITE = $(GNU_SITE)/gmp
-MPC_SITE = $(GNU_SITE)/mpc
-MPFR_SITE = $(GNU_SITE)/mpfr
-ISL_SITE = https://libisl.sourceforge.io
-MUSL_SITE = https://musl.libc.org/releases
-MUSL_REPO = git://git.musl-libc.org/musl
-LINUX_SITE = https://cdn.kernel.org/pub/linux/kernel
+-include source_urls.mak
 
 DL_CMD = curl -sL4 --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 -o
 SHA1_CMD = sha1sum -c
@@ -63,10 +53,18 @@ $(SOURCES):
 
 $(SOURCES)/config.sub: | $(SOURCES)
 	mkdir -p $@.tmp
-	if test -f $(CURDIR)/config.sub.$(CONFIG_SUB_REV); then \
-		cp $(CURDIR)/config.sub.$(CONFIG_SUB_REV) $@.tmp/$(notdir $@); \
-	else \
-		cd $@.tmp && $(DL_CMD) $(notdir $@) "https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=$(CONFIG_SUB_REV)"; \
+	use_local=false; \
+	if test -f $(CURDIR)/config.sub; then \
+		cd $(CURDIR) && if $(SHA1_CMD) hashes/$(notdir $@).$(CONFIG_SUB_REV).sha1 2>/dev/null; then \
+			echo "Using local config.sub (SHA1 verified) matching $(CONFIG_SUB_REV)"; \
+			cp config.sub $@.tmp/$(notdir $@); \
+			use_local=true; \
+		else \
+			echo "Local config.sub SHA1 mismatch, downloading..."; \
+		fi; \
+	fi; \
+	if [ "$$use_local" = "false" ]; then \
+		cd $@.tmp && $(DL_CMD) $(notdir $@) $(CONFIG_SUB_URL); \
 	fi
 	cd $@.tmp && touch $(notdir $@)
 	cd $@.tmp && $(SHA1_CMD) $(CURDIR)/hashes/$(notdir $@).$(CONFIG_SUB_REV).sha1
@@ -176,3 +174,6 @@ install: | $(SRC_DIRS) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.ma
 endif
 
 .SECONDARY:
+
+download_only: $(foreach dir,$(SRC_DIRS),$(patsubst hashes/$(dir).%.sha1,$(SOURCES)/$(dir).%,$(wildcard hashes/$(dir).*))) $(SOURCES)/config.sub
+	@echo "All sources downloaded."
