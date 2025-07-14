@@ -8,6 +8,8 @@ ENV CHOST=${ARCH}
 ENV CC=${ARCH}-gcc
 ENV CXX=${ARCH}-g++
 ENV AR=${ARCH}-ar
+ENV QBT_MCM_DOCKER="YES"
+ENV QBT_MCM_TARGET="${ARCH}"
 
 RUN case "$TARGETPLATFORM" in \
         "linux/amd64") URL_PREFIX="x86_64-" ;; \
