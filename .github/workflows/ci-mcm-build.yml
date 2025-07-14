@@ -35,6 +35,13 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
+      - name: Host - Download source artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ github.workspace }}/sources
+          pattern: qbt-mcm-source-files
+          merge-multiple: true
+
       - name: cat versions.json versions.mak
         run: |
           cat versions.json

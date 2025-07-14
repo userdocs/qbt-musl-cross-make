@@ -1,0 +1,37 @@
+name: ci - bootstrap-build-deps
+
+on:
+  workflow_call:
+    inputs:
+      gnu_mirror_url:
+        description: "URL for GNU mirror"
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04-arm
+
+    name: "yes"
+
+    env:
+      GNU_MIRROR_URL: ${{ inputs.gnu_mirror_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Downloads sources
+        run: make download_only
+
+      - name: Host - Upload source artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: qbt-mcm-source-files
+          path: "sources/*"
+
+      - name: summaries
+        run: |
+          ls -la sources/* >> $GITHUB_STEP_SUMMARY

@@ -35,8 +35,8 @@ on:
         type: choice
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-  schedule:
-    - cron: "0 */3 * * *"
+  # schedule:
+  #     - cron: "*/5 * * * *"
 
 permissions: {}
 
@@ -113,13 +113,35 @@ jobs:
       bypass_check: ${{ needs.scheduled_defaults.outputs.bypass_check }}
       gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
 
-  bootstrap-matrix:
+  ci-bootstrap-build-deps:
     if: >
       always() && !failure() && !cancelled()
       && needs.skip_duplicate_job.outputs.should_skip != 'true'
       && needs.ci-check-new-releases.outputs.build_new_release == 'true' ||
       ( needs.scheduled_defaults.outputs.docker_only == 'true' || needs.scheduled_defaults.outputs.toolchains_only == 'true' )
     needs: [skip_duplicate_job, scheduled_defaults, ci-check-new-releases]
+    concurrency:
+      group: ci-check-new-releases
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    uses: ./.github/workflows/ci-bootstrap-build-deps.yml
+    with:
+      gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
+
+  bootstrap-matrix:
+    if: >
+      always() && !failure() && !cancelled()
+      && needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && needs.ci-check-new-releases.outputs.build_new_release == 'true' ||
+      ( needs.scheduled_defaults.outputs.docker_only == 'true' || needs.scheduled_defaults.outputs.toolchains_only == 'true' )
+    needs:
+      [
+        skip_duplicate_job,
+        scheduled_defaults,
+        ci-check-new-releases,
+        ci-bootstrap-build-deps,
+      ]
     runs-on: ubuntu-24.04-arm
     outputs:
       mcm_build_matrix: ${{ steps.triples.outputs.mcm_build_matrix }}
