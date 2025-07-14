@@ -67,7 +67,7 @@ jobs:
           remote_versions[MPC_VER]="$(curl -sL "${gnu_mirror_url}/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
           remote_versions[MPFR_VER]="$(curl -sL "${gnu_mirror_url}/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
           remote_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | ssed -Rn 's|(.*)href="linux-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | head -n1)"
-          remote_versions[ISL_VER]="$(curl -sL https://libisl.sourceforge.io | ssed -Rn 's|(.*)href="isl-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
+          remote_versions[ISL_VER]="$(curl -sL https://sourceforge.net/projects/libisl/files | ssed -Rn 's|(.*)href="(.*)isl-(.+?)\.tar\.xz/download"(.*)|\3|p' | sort -V | tail -n1)"
 
           # Verify the array entries and exit on failure
           for key in "${!remote_versions[@]}"; do
@@ -153,6 +153,17 @@ jobs:
           if [[ ${bypass_check} == 'true' ]] ; then
             printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
           fi
+
+          printf '%b\n' "# Versions Outputs Summary" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "CONFIG_SUB_REV: ${remote_versions[CONFIG_SUB_REV]}" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "GCC_VER: ${remote_versions[GCC_VER]}" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "BINUTILS_VER: ${remote_versions[BINUTILS_VER]}" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "MUSL_VER: ${remote_versions[MUSL_VER]}" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "GMP_VER: ${remote_versions[GMP_VER]}" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "MPC_VER: ${remote_versions[MPC_VER]}" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "MPFR_VER: ${remote_versions[MPFR_VER]}" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "LINUX_VER: ${remote_versions[LINUX_VER]}" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "ISL_VER: ${remote_versions[ISL_VER]}" >> $GITHUB_STEP_SUMMARY
 
       - name: Commit and Push
         if: ${{ steps.boot_strap_release.outputs.build_new_release == 'true' }}
