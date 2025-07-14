@@ -1,6 +1,7 @@
 name: ci - docker-test
 
 on:
+  workflow_dispatch:
   workflow_call:
     inputs:
       docker_test_matrix:
@@ -9,15 +10,132 @@ on:
         type: string
 
 jobs:
+  bootstrap-matrix:
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      docker_test_matrix: ${{ steps.triples.outputs.docker_test_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: bootstrap the matrix
+        id: triples
+        run: |
+          echo "docker_test_matrix=$(jq -c '{build_host: [.build_host[]], arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
+
   docker-test:
+    needs: [bootstrap-matrix]
+    permissions:
+      contents: read
+    env:
+      arch_type: ${{ matrix.arch_type }}
     runs-on: ${{ matrix.build_host }}
-    container: ghcr.io/userdocs/qbt-musl-cross-make:${{ matrix.arch_type }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(inputs.docker_test_matrix) }}
+      matrix: ${{ fromJSON(inputs.docker_test_matrix || needs.bootstrap-matrix.outputs.docker_test_matrix) }}
 
     steps:
-      - name: file gcc
-        env:
-          arch_type: ${{ matrix.arch_type }}
-        run: file /usr/local/bin/${arch_type}-gcc
+      - name: Host - update
+        run: sudo apt-get update
+
+      - name: Host - set up qemu-user-static binfmt-support
+        run: sudo apt install qemu-user-static binfmt-support
+
+      - name: bootstrap
+        run: >
+          docker run --pull always -v ${{ github.workspace }}:/root -w /root ghcr.io/${{ github.repository }}:${arch_type} bash -c '
+          echo "--- Checking env ---" &&
+          env &&
+          echo "--- Checking compiler ---" &&
+          file /usr/local/bin/${arch_type}-gcc &&
+          echo "--- Checking compiler symlinks work ---" &&
+          /usr/local/bin/gcc -v'
+
+      - name: Run cross-arch container gcc info
+        run: >
+          docker run -v ${{ github.workspace }}:/root -w /root ghcr.io/${{ github.repository }}:${arch_type} bash -c '
+          echo "--- Checking compiler ---" &&
+          file /usr/local/bin/${arch_type}-gcc &&
+          /usr/local/bin/gcc -v'
+
+      - name: create test hello.c
+        run: |
+          echo "--- Creating source file ---"
+          cat > hello.c << 'EOF'
+          #include <stdio.h>
+          int main() {
+              printf("Hello World!\n");
+              return 0;
+          }
+          EOF
+
+      - name: Run cross-arch container gcc build hello.c
+        run: >
+          docker run -v ${{ github.workspace }}:/root -w /root ghcr.io/${{ github.repository }}:${arch_type} bash -c '
+          echo "--- Compiling binary ---" &&
+          gcc -static -o hello hello.c'
+
+      - name: Run cross-arch container qemu run
+        run: >
+          docker run -v ${{ github.workspace }}:/root -w /root ghcr.io/${{ github.repository }}:${arch_type} bash -c '
+          echo "--- Checking binary type ---" &&
+          file ./hello &&
+
+          echo "--- Running binary ---" &&
+          ./hello'
+
+      - name: create test hello_zlib-ng.c
+        run: |
+          echo "--- Creating source file ---"
+          cat > hello_zlib-ng.c << 'EOF'
+          #include <stdio.h>
+          #include <stdlib.h>
+          #include <string.h>
+          #include <zlib-ng.h>
+
+          int main() {
+              printf("Hello, World!\n");
+              printf("zlib-ng version: %s\n", zlibng_version());
+
+              // Simple compression test
+              const char* input = "Hello from zlib-ng!";
+              size_t input_len = strlen(input);
+              size_t compressed_len = zng_compressBound(input_len);
+
+              uint8_t* compressed = malloc(compressed_len);
+
+              if (zng_compress(compressed, &compressed_len, (const uint8_t*)input, input_len) == Z_OK) {
+                  printf("Original size: %zu bytes\n", input_len);
+                  printf("Compressed size: %zu bytes\n", compressed_len);
+                  printf("Compression ratio: %.2f%%\n",
+                        100.0 - (100.0 * compressed_len / input_len));
+              }
+
+              free(compressed);
+              return 0;
+          }
+          EOF
+
+      - name: Run cross container gcc build hello_zlib-ng
+        run: >
+          docker run -v ${{ github.workspace }}:/root -w /root ghcr.io/${{ github.repository }}:${arch_type} bash -c '
+          echo "--- Building deps ---" &&
+          git clone --depth 1 https://github.com/zlib-ng/zlib-ng.git &&
+          cd /root/zlib-ng &&
+          cmake -G Ninja -B build -D BUILD_SHARED_LIBS=OFF -D WITH_GTEST=OFF -D CMAKE_INSTALL_PREFIX=/root/z && cmake --build build && cmake --install build &&
+          cd /root && ls -la &&
+          echo "--- Compiling binary ---" &&
+          gcc -static -o hello_zlib-ng hello_zlib-ng.c -I/root/z/include -L/root/z/lib -lz-ng'
+
+      - name: Run cross-arch container qemu run
+        run: >
+          docker run -v ${{ github.workspace }}:/root -w /root ghcr.io/${{ github.repository }}:${arch_type} bash -c '
+          echo "--- Checking binary type ---" &&
+          file ./hello_zlib-ng &&
+
+          echo "--- Running binary ---" &&
+          ./hello_zlib-ng'
