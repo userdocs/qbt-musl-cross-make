@@ -55,6 +55,7 @@ jobs:
               printf '%s\n' "savannah.gnu.org is unreachable (again), using jq to get config.sub commit hash of current version"
           fi
 
+          # current version is determined by getting the versions.json from the latest release
           declare -A current_versions
           eval "$(jq -r 'to_entries[]|@sh"current_versions[\(.key)]=\(.value)"' remote_versions.json)"
 
@@ -98,10 +99,41 @@ jobs:
             if [[ ! "$iray" =~ ^(CONFIG_SUB_REV|MUSL_VER)$ ]]; then
               if [[ "$(ver "${current_versions[$iray]}")" -lt "$(ver "${remote_versions[$iray]}")" ]]; then
                 printf "%-14s current:%-15s remote:%-15s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
+
+                # get updated shasum of $iray
                 curl -sL "${remote_urls_dl[$iray]}" -o "${remote_urls_dl[$iray]##*/}"
                 sha1sum "${remote_urls_dl[$iray]##*/}" > "hashes/${remote_urls_dl[$iray]##*/}.sha1"
                 rm -f "${remote_urls_dl[$iray]##*/}"
+
+                # Extract package name more robustly
+                patch_dir_prefix="${iray%_VER}"
+                patch_dir_prefix="${patch_dir_prefix,,}" # Convert to lowercase
+
+                current_patch_dir="patches/${patch_dir_prefix}-${current_versions[$iray]}"
+                new_patch_dir="patches/${patch_dir_prefix}-${remote_versions[$iray]}"
+
+                if [[ -d "${current_patch_dir}" ]]; then
+                    printf '\n%s\n\n' "${current_patch_dir} exists"
+                    printf '%s\n\n' "Does the ${patch_dir_prefix}-${current_versions[$iray]} directory has any patches?" >> $GITHUB_STEP_SUMMARY
+                    if (
+                        shopt -s nullglob dotglob
+                        f=("${current_patch_dir}"/*.diff)
+                        ((${#f[@]}))
+                    ); then
+                        printf '%s\n\n' "It does ... copying them to ${new_patch_dir}" >> $GITHUB_STEP_SUMMARY
+                        # Create directory and copy patches
+                        mkdir -p "${new_patch_dir}"
+                        cp -rf "${current_patch_dir}"/* "${new_patch_dir}/"
+                    else
+                        printf '\n%s\n\n' '${patch_dir_prefix}-${current_versions[$iray]} directory is empty' >> $GITHUB_STEP_SUMMARY
+                    fi
+                else
+                    printf '\n%s\n\n' "${current_patch_dir} does not exist" >> $GITHUB_STEP_SUMMARY
+                    printf '%s\n\n' "no patches to copy over to new version" >> $GITHUB_STEP_SUMMARY
+                fi
+
                 printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
+                build_new_release=true
               else
                 printf "%-14s current:%-15s remote:%-15s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
               fi
@@ -118,12 +150,22 @@ jobs:
                 fi
 
                 printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
+                build_new_release=true
               else
                 printf "%-14s current:%-15s remote:%-15s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
               fi
             fi
           done
 
+          if [[ ${bypass_check} == 'true' ]] ; then
+            printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
+            build_new_release=true
+          fi
+
+          printf '%b\n' "# build_new_release?" >> $GITHUB_STEP_SUMMARY
+          printf '\n%s\n\n' "build_new_release=${build_new_release}" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${build_new_release}" == "true" ]]; then
           cat > "versions.json" <<- VERSIONS_JSON
           {
             "CONFIG_SUB_REV": "${remote_versions[CONFIG_SUB_REV]}",
@@ -138,6 +180,9 @@ jobs:
           }
           VERSIONS_JSON
 
+            printf '\n%s\n\n' "# existing versions.mak" >> $GITHUB_STEP_SUMMARY
+            cat versions.mak >> $GITHUB_STEP_SUMMARY
+
           cat > "versions.mak" <<- VERSIONS_MAK
           CONFIG_SUB_REV = ${remote_versions[CONFIG_SUB_REV]}
           GCC_VER = ${remote_versions[GCC_VER]}
@@ -150,11 +195,11 @@ jobs:
           ISL_VER = ${remote_versions[ISL_VER]}
           VERSIONS_MAK
 
-          if [[ ${bypass_check} == 'true' ]] ; then
-            printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
+            printf '\n%s\n\n' "# updated versions.mak" >> $GITHUB_STEP_SUMMARY
+            cat versions.mak >> $GITHUB_STEP_SUMMARY
           fi
 
-          printf '%b\n' "# Versions Outputs Summary" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "# Remote versions outputs summary" >> $GITHUB_STEP_SUMMARY
           printf '%b\n' "CONFIG_SUB_REV: ${remote_versions[CONFIG_SUB_REV]}" >> $GITHUB_STEP_SUMMARY
           printf '%b\n' "GCC_VER: ${remote_versions[GCC_VER]}" >> $GITHUB_STEP_SUMMARY
           printf '%b\n' "BINUTILS_VER: ${remote_versions[BINUTILS_VER]}" >> $GITHUB_STEP_SUMMARY
@@ -165,12 +210,17 @@ jobs:
           printf '%b\n' "LINUX_VER: ${remote_versions[LINUX_VER]}" >> $GITHUB_STEP_SUMMARY
           printf '%b\n' "ISL_VER: ${remote_versions[ISL_VER]}" >> $GITHUB_STEP_SUMMARY
 
+      # This step only runs of if steps.boot_strap_release.outputs.build_new_release == 'true'
+      # This will only be set if the versions.json value from the latest release is different to the remote version. Not the local version.mak version
+      # So if the bypass check is used the automatic change by the workflow won't be committed and the build will use the version.mak
+      # Because the upstream version and the latest release version are the same. The versions.mak is not used in the version check.
+      # Allowing us to build whatever combinations we define in the versions.mak
       - name: Commit and Push
         if: ${{ steps.boot_strap_release.outputs.build_new_release == 'true' }}
         run: |
           # Only run git commands if there are actual changes
-          if [[ -f "versions.json" ]] && [[ -f "versions.mak" ]] && [[ -d "hashes" ]] && [[ -f "config.sub" ]]; then
-            git add versions.json versions.mak hashes/*.sha1 config.sub || true
+          if [[ -f "versions.json" ]] && [[ -f "versions.mak" ]] && [[ -d "hashes" ]] && [[ -d "patches" ]] && [[ -f "config.sub" ]]; then
+            git add versions.json versions.mak hashes/*.sha1 patches/* config.sub || true
             git status --porcelain | grep -q . && {
             git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' commit -m "Automated commit by GitHub Actions"
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
