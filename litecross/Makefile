@@ -8,44 +8,11 @@ MUSL_SRCDIR = MUSL_SRCDIR_not_set
 GCC_CONFIG_FOR_TARGET =
 COMMON_CONFIG =
 GCC_CONFIG =
-TOOLCHAIN_CONFIG =
 
 XGCC_DIR = ../obj_gcc/gcc
 XGCC = $(XGCC_DIR)/xgcc -B $(XGCC_DIR)
 
 -include config.mak
-
-ifneq ($(findstring fdpic,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --enable-fdpic
-endif
-
-ifneq ($(filter x86_64%x32,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-abi=x32
-endif
-
-ifneq ($(findstring powerpc64,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-abi=elfv2 --with-cpu=970
-endif
-
-ifneq ($(findstring mips64,$(TARGET))$(findstring mipsisa64,$(TARGET)),)
-ifneq ($(findstring n32,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-abi=n32
-else
-GCC_CONFIG_FOR_TARGET += --with-abi=64
-endif
-endif
-
-ifneq ($(findstring s390x,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-long-double-128
-endif
-
-ifneq ($(filter %sf,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-float=soft
-endif
-
-ifneq ($(filter %hf,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-float=hard
-endif
 
 ifneq ($(LIBTOOL),)
 LIBTOOL_ARG = LIBTOOL=$(LIBTOOL)
@@ -56,38 +23,17 @@ MAKE += INFO_DEPS= infodir=
 MAKE += ac_cv_prog_lex_root=lex.yy
 MAKE += MAKEINFO=false
 
-FULL_BINUTILS_CONFIG = \
-	--disable-separate-code \
-	$(COMMON_CONFIG) $(BINUTILS_CONFIG) $(TOOLCHAIN_CONFIG) \
-	--disable-werror \
-	--target=$(TARGET) --prefix= \
-	--libdir=/lib --disable-multilib \
-	--with-sysroot=$(SYSROOT) \
-	--enable-deterministic-archives
+FULL_BINUTILS_CONFIG = --target=$(TARGET) --with-sysroot=$(SYSROOT) \
+	$(COMMON_CONFIG) \
+	$(BINUTILS_CONFIG)
 
-FULL_GCC_CONFIG = --enable-languages=c,c++ \
-	$(GCC_CONFIG_FOR_TARGET) \
-	$(COMMON_CONFIG) $(GCC_CONFIG) $(TOOLCHAIN_CONFIG) \
-	--disable-bootstrap \
-	--disable-assembly \
-	--disable-werror \
-	--target=$(TARGET) --prefix= \
-	--libdir=/lib --disable-multilib \
-	--with-sysroot=$(SYSROOT) \
-	--enable-tls \
-	--disable-libmudflap --disable-libsanitizer \
-	--disable-gnu-indirect-function \
-	--disable-libmpx \
-	--enable-initfini-array \
-	--enable-libstdcxx-time=rt \
-	--enable-deterministic-archives \
-	--enable-libstdcxx-time \
-	--enable-libquadmath --enable-libquadmath-support \
-	--disable-decimal-float \
-        $(OVERRIDE)
+FULL_GCC_CONFIG = --target=$(TARGET) --with-sysroot=$(SYSROOT) \
+	$(COMMON_CONFIG) \
+	$(GCC_CONFIG) \
+	$(GCC_CONFIG_FOR_TARGET) # used with workflow and triples.json
 
-FULL_MUSL_CONFIG = $(MUSL_CONFIG) \
-	--prefix= --host=$(TARGET)
+FULL_MUSL_CONFIG = --prefix= --host=$(TARGET) \
+	$(MUSL_CONFIG)
 
 ifneq ($(NATIVE),)
 HOST:=$(TARGET)

@@ -85,7 +85,7 @@ endif
 
 musl-git-%:
 	rm -rf $@.tmp
-	git clone $(MUSL_REPO) $@.tmp
+	git clone --shallow-submodules --recurse-submodules --depth 1 $(MUSL_REPO) $@.tmp
 	cd $@.tmp && git reset --hard $(patsubst musl-git-%,%,$@) && git fsck
 	test ! -d patches/$@ || cat patches/$@/* | ( cd $@.tmp && patch -p1 )
 	mv $@.tmp $@
