@@ -20,13 +20,11 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(inputs.mcm_build_matrix) }}
     env:
-      matrix_alpine_prefix: ${{ matrix.alpine_prefix }}
       matrix_arch_type: ${{ matrix.arch_type }}
       matrix_arch_config: ${{ matrix.arch_config }}
       matrix_triple_prefix: ${{ matrix.triple_prefix }}
-      matrix_docker_platform: ${{ matrix.docker_platform }}
-      container_name: mcm
       gnu_mirror_url: ${{ inputs.gnu_mirror_url }}
+      container_name: mcm
 
     steps:
       - name: Checkout
@@ -35,47 +33,60 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
-      - name: Host - Download source artifacts
-        uses: actions/download-artifact@v4
+      - name: Host - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
+        run: sed "s|GCC_CONFIG_FOR_TARGET +=|GCC_CONFIG_FOR_TARGET += ${matrix_arch_config}|" -i config.mak
+
+      - name: Host - Show updated config.mak
+        run: |
+          for mak in *.mak; do
+            {
+              printf '\n%s\n\n' "# $mak"
+              printf '%s\n' '```'
+              while IFS= read -r line; do
+                if [[ $line =~ ^-include[[:space:]](.*)$ ]]; then
+                  [[ -f "${BASH_REMATCH[1]}" ]] && cat "${BASH_REMATCH[1]}"
+                else
+                  printf '%s\n' "$line"
+                fi
+              done < "$mak"
+              printf '%s\n' '```'
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Host - Cache sources (restore)
+        uses: actions/cache/restore@v4
         with:
           path: ${{ github.workspace }}/sources
-          pattern: qbt-mcm-source-files
-          merge-multiple: true
+          key: mcm-sources-${{ hashFiles('versions.mak') }}
 
-      - name: cat versions.json versions.mak
-        run: |
-          cat versions.json
-          cat versions.mak
-
-      - name: Host - update
-        run: sudo apt-get update
-
-      - name: Host - set up qemu-user-static binfmt-support
-        run: sudo apt install libpipeline1 qemu-user-static binfmt-support
+      - name: Host - Github cache files - update timestamps
+        run: find ${{ github.workspace }}/sources/ -type f -exec touch -a -m {} +
 
       - name: Host - Create docker multiarch container
         run: |
-          docker run --name ${container_name} -it -d -e "GNU_MIRROR_URL=${gnu_mirror_url}" -w /home/gh -v ${{ github.workspace }}:/home/gh ${matrix_alpine_prefix}/alpine:edge
+          docker run --name ${container_name} -it -d -e "GNU_MIRROR_URL=${gnu_mirror_url}" -w /home/gh -v ${{ github.workspace }}:/home/gh alpine:edge
           docker exec ${container_name} sh -c 'adduser -h /home/gh -Ds /bin/bash -u 1001 gh && apk add sudo'
           docker exec ${container_name} sh -c 'printf "%s" "gh ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/gh'
 
       - name: Docker - apk update
-        run: docker exec ${container_name} apk update
+        run: docker exec ${container_name} apk update --no-cache
 
-      - name: Docker - apk install bash
-        run: docker exec ${container_name} apk add -u --no-cache autoconf automake bash bison build-base curl findutils flex git libarchive-tools libtool linux-headers patch perl pkgconf rsync tar texinfo xz zip zlib-dev zlib-static
+      - name: Docker - apk install dependencies
+        run: >
+          docker exec ${container_name}
+          apk add -u --no-cache
+          autoconf automake bash bison build-base curl
+          findutils flex git libarchive-tools libtool
+          linux-headers patch perl pkgconf rsync
+          tar texinfo xz zip zlib-dev zlib-static
 
-      - name: Host - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
-        run: sed "s|GCC_CONFIG_FOR_TARGET +=|GCC_CONFIG_FOR_TARGET += ${matrix_arch_config}|" -i config.mak
-
-      - name: Host - cowpatch
-        run: docker exec ${container_name} chmod +x cowpatch.sh
-
-      - name: Host -  Show updated config.mak
-        run: cat config.mak
+      - name: Docker - scripts +x
+        run: docker exec ${container_name} chmod +x cowpatch.sh builder-helper.bash
 
       - name: Docker - install ${{ matrix.arch_type }} toolchain
-        run: docker exec -u gh:gh ${container_name} make -j"$(nproc)" install TARGET="${matrix_arch_type}" OUTPUT="/home/gh/build/${matrix_arch_type}"
+        run: >
+          docker exec -u gh:gh ${container_name}
+          make -j"$(nproc)" install TARGET="${matrix_arch_type}" OUTPUT="/home/gh/build/${matrix_arch_type}"
 
       - name: Host - archive ${{ matrix.arch_type }} toolchain
         run: |
@@ -90,5 +101,5 @@ jobs:
       - name: Host - Docker - upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: "qbt-${{ env.container_name }}-${{ matrix.triple_prefix }}-${{ matrix.arch_type }}"
+          name: "${{ matrix.triple_prefix }}-${{ matrix.arch_type }}-toolchain"
           path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"

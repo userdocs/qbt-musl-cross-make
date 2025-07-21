@@ -3,6 +3,7 @@ FROM alpine:edge
 ARG TARGETPLATFORM
 ARG ARCH
 ARG BASE_URL
+ARG QBT_CROSS_NAME
 
 ENV CHOST=${ARCH}
 ENV CC=${ARCH}-gcc
@@ -10,18 +11,21 @@ ENV CXX=${ARCH}-g++
 ENV AR=${ARCH}-ar
 ENV QBT_MCM_DOCKER="YES"
 ENV QBT_MCM_TARGET="${ARCH}"
+ENV QBT_CROSS_NAME="${QBT_CROSS_NAME}"
 
 RUN case "$TARGETPLATFORM" in \
-        "linux/amd64") URL_PREFIX="x86_64-" ;; \
-        "linux/arm64") URL_PREFIX="aarch64-" ;; \
+        "linux/amd64") URL_PREFIX="x86_64" ;; \
+        "linux/arm64") URL_PREFIX="aarch64" ;; \
         *) URL_PREFIX="" ;; \
     esac \
     && apk add -u --no-cache \
         autoconf automake bash cmake coreutils curl \
         file fortify-headers git gpg patch pkgconf \
-        libtool make perl linux-headers ttf-freefont \
-        graphviz re2c xz ninja-build ninja-is-really-ninja sudo \
-    && curl -Lo- "${BASE_URL}/${URL_PREFIX}${ARCH}.tar.xz" | tar xJf - --strip-components=1 -C /usr/local \
+        libtool make perl python3-dev \
+        py3-numpy py3-numpy-dev libc-dev musl-dev \
+        sudo nano linux-headers ttf-freefont \
+        graphviz re2c xz ninja-build ninja-is-really-ninja \
+    && curl -Lo- "${BASE_URL}/${URL_PREFIX}-${ARCH}.tar.xz" | tar xJf - --strip-components=1 -C /usr/local \
     && cd /usr/local/bin \
     && for f in ${ARCH}-*; do ln -s "$f" "${f#${ARCH}-}"; done
 

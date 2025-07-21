@@ -5,9 +5,10 @@ BINUTILS_SRCDIR = BINUTILS_SRCDIR_not_set
 GCC_SRCDIR = GCC_SRCDIR_not_set
 MUSL_SRCDIR = MUSL_SRCDIR_not_set
 
-GCC_CONFIG_FOR_TARGET =
 COMMON_CONFIG =
+BINUTILS_CONFIG =
 GCC_CONFIG =
+GCC_CONFIG_FOR_TARGET =
 
 XGCC_DIR = ../obj_gcc/gcc
 XGCC = $(XGCC_DIR)/xgcc -B $(XGCC_DIR)
@@ -23,14 +24,14 @@ MAKE += INFO_DEPS= infodir=
 MAKE += ac_cv_prog_lex_root=lex.yy
 MAKE += MAKEINFO=false
 
-FULL_BINUTILS_CONFIG = --target=$(TARGET) --with-sysroot=$(SYSROOT) \
+FULL_BINUTILS_CONFIG = --prefix= --libdir=/lib --target=$(TARGET) --with-sysroot=$(SYSROOT) \
 	$(COMMON_CONFIG) \
 	$(BINUTILS_CONFIG)
 
-FULL_GCC_CONFIG = --target=$(TARGET) --with-sysroot=$(SYSROOT) \
+FULL_GCC_CONFIG = --prefix= --libdir=/lib --target=$(TARGET) --with-sysroot=$(SYSROOT) \
 	$(COMMON_CONFIG) \
 	$(GCC_CONFIG) \
-	$(GCC_CONFIG_FOR_TARGET) # used with workflow and triples.json
+	$(GCC_CONFIG_FOR_TARGET)
 
 FULL_MUSL_CONFIG = --prefix= --host=$(TARGET) \
 	$(MUSL_CONFIG)
@@ -209,7 +210,7 @@ install-gcc: | obj_gcc/.lc_built
 
 ifneq ($(LINUX_SRCDIR),)
 TARGET_ARCH = $(firstword $(subst -, ,$(TARGET)))
-TARGET_ARCH_MANGLED = $(patsubst i%86,x86,$(patsubst aarch64%,arm64%,$(TARGET_ARCH)))
+TARGET_ARCH_MANGLED = $(patsubst or1k,openrisc,$(patsubst i%86,x86,$(patsubst aarch64%,arm64%,$(TARGET_ARCH))))
 LINUX_ARCH_LIST = $(sort $(notdir $(wildcard $(LINUX_SRCDIR)/arch/*)))
 LINUX_ARCH = $(lastword $(foreach a,$(LINUX_ARCH_LIST),$(if $(filter $(a)%,$(TARGET_ARCH_MANGLED)),$(a))))
 ifneq ($(LINUX_ARCH),)
@@ -220,7 +221,7 @@ src_kernel_headers: | $(LINUX_SRCDIR)
 	ln -sf "$(LINUX_SRCDIR)" $@
 obj_kernel_headers/.lc_built: | src_kernel_headers
 	mkdir -p $(CURDIR)/obj_kernel_headers/staged
-	cd src_kernel_headers && $(MAKE) ARCH=$(LINUX_ARCH) O=$(CURDIR)/obj_kernel_headers INSTALL_HDR_PATH=$(CURDIR)/obj_kernel_headers/staged headers_install HOSTCC="$(CC) $(STAT)"
+	cd src_kernel_headers && $(MAKE) ARCH=$(LINUX_ARCH) O=$(CURDIR)/obj_kernel_headers INSTALL_HDR_PATH=$(CURDIR)/obj_kernel_headers/staged headers_install
 	find obj_kernel_headers/staged/include '(' -name .install -o -name ..install.cmd ')' -exec rm {} +
 	touch $@
 install-kernel-headers: | obj_kernel_headers/.lc_built

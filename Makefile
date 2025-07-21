@@ -1,10 +1,11 @@
-SOURCES = sources
+SOURCES = $(shell pwd)/sources
 
 -include versions.mak
 -include source_urls.mak
 
-DL_CMD = curl -sL4 --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 -o
+DL_CMD = curl -L4 --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 -o
 SHA1_CMD = sha1sum -c
+
 COWPATCH = $(CURDIR)/cowpatch.sh
 
 HOST = $(if $(NATIVE),$(TARGET))
@@ -28,18 +29,22 @@ clean:
 distclean: clean
 	rm -rf sources
 
+
 # Rules for downloading and verifying sources. Treat an external SOURCES path as
 # immutable and do not try to download anything into it.
 
-ifeq ($(SOURCES),sources)
+ifeq ($(SOURCES),$(shell pwd)/sources)
 
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gmp*)): SITE = $(GMP_SITE)
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/mpc*)): SITE = $(MPC_SITE)
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/mpfr*)): SITE = $(MPFR_SITE)
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/isl*)): SITE = $(ISL_SITE)
-$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/binutils*)): SITE = $(BINUTILS_SITE)
-$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gcc*)): SITE = $(GCC_SITE)/$(basename $(basename $(notdir $@)))
-$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/musl*)): SITE = $(MUSL_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/binutils-*.*.tar*)): SITE = $(BINUTILS_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/binutils-*.*.*.tar*)): SITE = $(BINUTILS_SNAP)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gcc-*)): SITE = $(GCC_SITE)/$(basename $(basename $(notdir $@)))
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gcc-*-*)): SITE = $(GCC_SNAP)/$(subst gcc-,,$(basename $(basename $(notdir $@))))
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/musl-1.*)): SITE = $(MUSL_RELEASE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/musl-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]*)): SITE = $(MUSL_SNAPSHOT)
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-7*)): SITE = $(LINUX_SITE)/v7.x
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-6*)): SITE = $(LINUX_SITE)/v6.x
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-5*)): SITE = $(LINUX_SITE)/v5.x
@@ -53,19 +58,7 @@ $(SOURCES):
 
 $(SOURCES)/config.sub: | $(SOURCES)
 	mkdir -p $@.tmp
-	use_local=false; \
-	if test -f $(CURDIR)/config.sub; then \
-		cd $(CURDIR) && if $(SHA1_CMD) hashes/$(notdir $@).$(CONFIG_SUB_REV).sha1 2>/dev/null; then \
-			echo "Using local config.sub (SHA1 verified) matching $(CONFIG_SUB_REV)"; \
-			cp config.sub $@.tmp/$(notdir $@); \
-			use_local=true; \
-		else \
-			echo "Local config.sub SHA1 mismatch, downloading..."; \
-		fi; \
-	fi; \
-	if [ "$$use_local" = "false" ]; then \
-		cd $@.tmp && $(DL_CMD) $(notdir $@) $(CONFIG_SUB_URL); \
-	fi
+	cd $@.tmp && $(DL_CMD) $(notdir $@) "https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=$(CONFIG_SUB_REV)"
 	cd $@.tmp && touch $(notdir $@)
 	cd $@.tmp && $(SHA1_CMD) $(CURDIR)/hashes/$(notdir $@).$(CONFIG_SUB_REV).sha1
 	mv $@.tmp/$(notdir $@) $@
@@ -81,13 +74,13 @@ $(SOURCES)/%: hashes/%.sha1 | $(SOURCES)
 
 endif
 
+
 # Rules for extracting and patching sources, or checking them out from git.
 
 musl-git-%:
 	rm -rf $@.tmp
-	git clone --shallow-submodules --recurse-submodules --depth 1 $(MUSL_REPO) $@.tmp
-	cd $@.tmp && git reset --hard $(patsubst musl-git-%,%,$@) && git fsck
-	test ! -d patches/$@ || cat patches/$@/* | ( cd $@.tmp && patch -p1 )
+	git clone --shallow-submodules --recurse-submodules --depth 1 -b $(patsubst musl-git-%,%,$@) $(MUSL_REPO) $@.tmp
+	cd $@.tmp && git fsck
 	mv $@.tmp $@
 
 %.orig: $(SOURCES)/%.tar.gz
@@ -99,6 +92,7 @@ musl-git-%:
 	touch $@.tmp/$(patsubst %.orig,%,$@)
 	mv $@.tmp/$(patsubst %.orig,%,$@) $@
 	rm -rf $@.tmp
+	case "$@" in binutils-*) rm -f $@/gas/doc/.dirstamp ;; esac
 
 %.orig: $(SOURCES)/%.tar.bz2
 	case "$@" in */*) exit 1 ;; esac
@@ -109,6 +103,7 @@ musl-git-%:
 	touch $@.tmp/$(patsubst %.orig,%,$@)
 	mv $@.tmp/$(patsubst %.orig,%,$@) $@
 	rm -rf $@.tmp
+	case "$@" in binutils-*) rm -f $@/gas/doc/.dirstamp ;; esac
 
 %.orig: $(SOURCES)/%.tar.xz
 	case "$@" in */*) exit 1 ;; esac
@@ -119,6 +114,7 @@ musl-git-%:
 	touch $@.tmp/$(patsubst %.orig,%,$@)
 	mv $@.tmp/$(patsubst %.orig,%,$@) $@
 	rm -rf $@.tmp
+	case "$@" in binutils-*) rm -f $@/gas/doc/.dirstamp ;; esac
 
 %: %.orig | $(SOURCES)/config.sub
 	case "$@" in */*) exit 1 ;; esac
@@ -130,10 +126,12 @@ musl-git-%:
 	rm -rf $@
 	mv $@.tmp $@
 
+
 # Add deps for all patched source dirs on their patchsets
 $(foreach dir,$(notdir $(basename $(basename $(basename $(wildcard hashes/*))))),$(eval $(dir): $$(wildcard patches/$(dir) patches/$(dir)/*)))
 
 extract_all: | $(SRC_DIRS)
+
 
 # Rules for building.
 
@@ -175,5 +173,5 @@ endif
 
 .SECONDARY:
 
-download_only: $(foreach dir,$(SRC_DIRS),$(patsubst hashes/$(dir).%.sha1,$(SOURCES)/$(dir).%,$(wildcard hashes/$(dir).*))) $(SOURCES)/config.sub
+download_only: $(foreach dir,$(SRC_DIRS),$(patsubst hashes/$(dir).%.sha1,$(SOURCES)/$(dir).%,$(wildcard hashes/$(dir).*)))
 	@echo "All sources downloaded."

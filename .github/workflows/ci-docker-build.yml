@@ -7,6 +7,10 @@ on:
         description: "Json matrix for docker build"
         required: true
         type: string
+      docker_build_platforms:
+        description: "Json matrix for docker build"
+        required: true
+        type: string
 
 jobs:
   docker-build:
@@ -19,6 +23,8 @@ jobs:
       GHCR_REPO: ghcr.io/${{ github.repository }}
       DOCKERHUB_REPO: ${{ github.repository }}
       DOCKER_BUILD_SUMMARY: "false"
+      arch_type: ${{ matrix.arch_type }}
+      docker_build_platforms: ${{ inputs.docker_build_platforms }}
 
     steps:
       - uses: actions/checkout@v4
@@ -53,10 +59,11 @@ jobs:
           context: .
           push: true
           provenance: false
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.docker_build_platforms }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ${{ env.GHCR_REPO }}:${{ matrix.arch_type }}
+          tags: ${{ env.GHCR_REPO }}:${{ env.arch_type }}
           no-cache: true
           build-args: |
-            ARCH=${{ matrix.arch_type }}
+            ARCH=${{ env.arch_type }}
             BASE_URL=https://github.com/${{ github.repository }}/releases/latest/download
+            QBT_CROSS_NAME=${{ env.qbt_cross_name }}
