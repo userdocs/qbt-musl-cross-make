@@ -3,7 +3,10 @@ name: ci - check-new-release
 on:
   workflow_call:
     inputs:
-      bypass_check:
+      bypass_update_check:
+        type: string
+        required: false
+      bypass_git_commit:
         type: string
         required: false
       gnu_mirror_url:
@@ -21,8 +24,12 @@ jobs:
     env:
       GH_TOKEN: "${{ github.token}}"
       build_new_release: "false"
-      bypass_check: ${{ inputs.bypass_check }}
+      bypass_update_check: ${{ inputs.bypass_update_check }}
+      bypass_git_commit: ${{ inputs.bypass_git_commit }}
       gnu_mirror_url: ${{ inputs.gnu_mirror_url }}
+      github_repository: ${{ github.repository }}
+      github_workspace: ${{ github.workspace }}
+      config_mak_upstream_test: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -36,193 +43,262 @@ jobs:
       - name: boot strap
         id: boot_strap_release
         run: |
-          if curl -sLIf "https://github.com/${{ github.repository }}/releases/latest/download/versions.json" &> /dev/null; then
-              until curl -sLf "https://github.com/${{ github.repository }}/releases/latest/download/versions.json" > remote_versions.json; do
-                echo "waiting for URL."
-                sleep 2
-              done
-          else
-              cp -f versions.json remote_versions.json
-              use_local_config_sub="yes"
-          fi
+          ################# config.mak stuff ######################
 
-          if curl -sLIo /dev/null --fail "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD"; then
-              config_sub="$(git ls-remote "https://git.savannah.gnu.org/git/config.git" | head -n1 | awk '{ print substr($1,1,8) }')"
+          # Fast connectivity check with short timeout
+          if curl -sLIo /dev/null --fail --connect-timeout 5 --max-time 10 "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD"; then
+            # Use git ls-remote with timeout
+            if config_sub_upstream="$(timeout 30 git ls-remote "https://git.savannah.gnu.org/git/config.git" | head -n1 | awk '{ print substr($1,1,12) }')"; then
               printf '%s\n' "savannah.gnu.org is reachable, using git to get config.sub commit hash of remote version"
-              curl -sL "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD" -o config.sub
+              printf '%b\n\n' "> [!NOTE]\n> \`config_mak_upstream_test:\` \`passed\` \n> config.sub commit hash retrieved via git-ls-remote" | tee -a $GITHUB_STEP_SUMMARY
+            else
+              config_mak_upstream_test="failed"
+            fi
           else
-              config_sub="$(jq -r .CONFIG_SUB_REV versions.json)"
-              printf '%s\n' "savannah.gnu.org is unreachable (again), using jq to get config.sub commit hash of current version"
+            config_mak_upstream_test="failed"
           fi
 
-          # current version is determined by getting the versions.json from the latest release
-          declare -A current_versions
-          eval "$(jq -r 'to_entries[]|@sh"current_versions[\(.key)]=\(.value)"' remote_versions.json)"
+          if [[ ${config_mak_upstream_test} == "failed" ]]; then
+            # set config.sub commit hash to config_sub_upstream via checking versions.mak version. If I updated it, consider it the upstream version.
+            printf '%b\n\n' "> [!WARNING]\n> \`config_mak_upstream_test:\` \`failed\` \n> Using sed to get sources/config.sub commit hash via version.mak" | tee -a $GITHUB_STEP_SUMMARY
+            config_sub_upstream="$(sed -rn 's|CONFIG_SUB_REV = (.*)$|\1|p' versions.mak)"
+          fi
 
-          declare -A remote_versions
-          remote_versions[CONFIG_SUB_REV]="${config_sub}"
-          remote_versions[GCC_VER]="$(curl -sL "${gnu_mirror_url}/gcc/" | ssed -Rn 's|(.*)href="gcc-(.+?)/"(.*)|\2|p' | sort -V | tail -n1)"
-          remote_versions[BINUTILS_VER]="$(curl -sL "${gnu_mirror_url}/binutils/" | ssed -Rn 's|(.*)href="binutils-([0-9]+\.[0-9]+)\.tar\.xz"(.*)|\2|p' | tail -n1)"
-          remote_versions[MUSL_VER]=git-"$(git ls-remote "https://git.musl-libc.org/git/musl" | head -n1 | awk '{ print substr($1,1,8) }')"
-          remote_versions[GMP_VER]="$(curl -sL "${gnu_mirror_url}/gmp/" | ssed -Rn 's|(.*)href="gmp-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
-          remote_versions[MPC_VER]="$(curl -sL "${gnu_mirror_url}/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
-          remote_versions[MPFR_VER]="$(curl -sL "${gnu_mirror_url}/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
-          remote_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | ssed -Rn 's|(.*)href="linux-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | head -n1)"
-          remote_versions[ISL_VER]="$(curl -sL https://sourceforge.net/projects/libisl/files | ssed -Rn 's|(.*)href="(.*)isl-(.+?)\.tar\.xz/download"(.*)|\3|p' | sort -V | tail -n1)"
+          ################# config.mak stuff ######################
+
+          ################# versions.json stuff ######################
+          declare -A current_release_versions
+
+          # download versions.json from latest release or use local versions.json renamed to current_release_versions if the download fails
+          if curl -sLIf "https://github.com/${github_repository}/releases/latest/download/versions.json" &> /dev/null; then
+            until curl -sLf "https://github.com/${github_repository}/releases/latest/download/versions.json" > current_release_versions.json; do
+              printf '%s\n' "waiting for URL."
+              sleep 2
+            done
+            printf '%b\n\n' "> [!NOTE]\n> Release \`versions.json:\` \`downloaded\` \n> using this to compare values" | tee -a $GITHUB_STEP_SUMMARY
+            # current versions are determined by getting the versions.json from the latest release. This is saved as current_release_versions.json in the workflow
+            eval "$(jq -r 'to_entries[]|@sh"current_release_versions[\(.key)]=\(.value)"' current_release_versions.json)"
+          else
+            printf '%b\n\n' "> [!NOTE]\n> Release \`versions.json:\` \`none\` \n> creating \`current_release_versions\` with empty values" | tee -a $GITHUB_STEP_SUMMARY
+            # if there is no versions.json in the latest release, create the current_release_versions array with empty values
+            # If there is a release it should be there. If not something has gone wrong.
+            current_release_versions[CONFIG_SUB_REV]="0"
+            current_release_versions[GCC_VER]="0"
+            current_release_versions[BINUTILS_VER]="0"
+            current_release_versions[MUSL_VER]="0"
+            current_release_versions[GMP_VER]="0"
+            current_release_versions[MPC_VER]="0"
+            current_release_versions[MPFR_VER]="0"
+            current_release_versions[LINUX_VER]="0"
+            current_release_versions[ISL_VER]="0"
+          fi
+
+          ################# versions.json stuff ######################
+
+          # upstream config.sub commit hash is set to config_sub_upstream
+          declare -A upstream_versions
+          upstream_versions[CONFIG_SUB_REV]="${config_sub_upstream}"
+          upstream_versions[GCC_VER]="$(curl -sL "${gnu_mirror_url}/gcc/" | ssed -Rn 's|(.*)href="gcc-(.+?)/"(.*)|\2|p' | sort -V | tail -n1)"
+          upstream_versions[BINUTILS_VER]="$(curl -sL "${gnu_mirror_url}/binutils/" | ssed -Rn 's|(.*)href="binutils-([0-9]+\.[0-9]+)\.tar\.xz"(.*)|\2|p' | tail -n1)"
+          upstream_versions[MUSL_VER]="$(git ls-remote "https://git.musl-libc.org/git/musl" | head -n1 | awk '{ print substr($1,1,12) }')"
+          upstream_versions[GMP_VER]="$(curl -sL "${gnu_mirror_url}/gmp/" | ssed -Rn 's|(.*)href="gmp-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
+          upstream_versions[MPC_VER]="$(curl -sL "${gnu_mirror_url}/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
+          upstream_versions[MPFR_VER]="$(curl -sL "${gnu_mirror_url}/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
+          upstream_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | ssed -Rn 's|(.*)href="linux-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | head -n1)"
+          upstream_versions[ISL_VER]="$(curl -sL https://sourceforge.net/projects/libisl/files | ssed -Rn 's|(.*)href="(.*)isl-(.+?)\.tar\.xz/download"(.*)|\3|p' | sort -V | tail -n1)"
 
           # Verify the array entries and exit on failure
-          for key in "${!remote_versions[@]}"; do
-            if [[ -z "${remote_versions[$key]}" ]]; then
-              echo "Error: ${key} is empty"
+          for key in "${!upstream_versions[@]}"; do
+            if [[ -z "${upstream_versions[$key]}" ]]; then
+              printf '%s\n' "Error: ${key} is empty"
               exit 1
             fi
           done
 
-          declare -A remote_urls_dl
-          remote_urls_dl[CONFIG_SUB_REV]="https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=${remote_versions[CONFIG_SUB_REV]}"
-          remote_urls_dl[GCC_VER]="${gnu_mirror_url}/gcc/gcc-${remote_versions[GCC_VER]}/gcc-${remote_versions[GCC_VER]}.tar.xz"
-          remote_urls_dl[BINUTILS_VER]="${gnu_mirror_url}/binutils/binutils-${remote_versions[BINUTILS_VER]}.tar.xz"
-          remote_urls_dl[MUSL_VER]=""
-          remote_urls_dl[GMP_VER]="${gnu_mirror_url}/gmp/gmp-${remote_versions[GMP_VER]}.tar.xz"
-          remote_urls_dl[MPC_VER]="${gnu_mirror_url}/mpc/mpc-${remote_versions[MPC_VER]}.tar.gz"
-          remote_urls_dl[MPFR_VER]="${gnu_mirror_url}/mpfr/mpfr-${remote_versions[MPFR_VER]}.tar.xz"
-          remote_urls_dl[LINUX_VER]="https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/linux-${remote_versions[LINUX_VER]}.tar.xz"
-          remote_urls_dl[ISL_VER]="https://libisl.sourceforge.io/isl-${remote_versions[ISL_VER]}.tar.xz"
+          declare -A upstream_urls_dl
+          upstream_urls_dl[CONFIG_SUB_REV]="https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=${upstream_versions[CONFIG_SUB_REV]}"
+          upstream_urls_dl[GCC_VER]="${gnu_mirror_url}/gcc/gcc-${upstream_versions[GCC_VER]}/gcc-${upstream_versions[GCC_VER]}.tar.xz"
+          upstream_urls_dl[BINUTILS_VER]="${gnu_mirror_url}/binutils/binutils-${upstream_versions[BINUTILS_VER]}.tar.xz"
+          upstream_urls_dl[MUSL_VER]="https://git.musl-libc.org/cgit/musl/snapshot/musl-${upstream_versions[MUSL_VER]}.tar.gz"
+          upstream_urls_dl[GMP_VER]="${gnu_mirror_url}/gmp/gmp-${upstream_versions[GMP_VER]}.tar.xz"
+          upstream_urls_dl[MPC_VER]="${gnu_mirror_url}/mpc/mpc-${upstream_versions[MPC_VER]}.tar.gz"
+          upstream_urls_dl[MPFR_VER]="${gnu_mirror_url}/mpfr/mpfr-${upstream_versions[MPFR_VER]}.tar.xz"
+          upstream_urls_dl[LINUX_VER]="https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/linux-${upstream_versions[LINUX_VER]}.tar.xz"
+          upstream_urls_dl[ISL_VER]="https://libisl.sourceforge.io/isl-${upstream_versions[ISL_VER]}.tar.xz"
 
           ver() {
-            local test_array
-            read -ra test_array < <(printf "%s" "${@//./ }")
-            printf "%d%03d%03d%03d" "${test_array[@]}"
+              local input="$1"
+
+              # Check if it's a pure numeric version (digits and dots only)
+              if [[ "$input" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+                  local test_array
+                  read -ra test_array < <(printf "%s" "${input//./ }")
+                  # Handle leading zeros by using %d to convert to integers, but pad appropriately
+                  local -a normalized_array
+                  for i in "${test_array[@]}"; do
+                      # Convert to integer to remove leading zeros, then format
+                      normalized_array+=("$(printf "%d" "$i")")
+                  done
+                  printf "%d%03d%03d%03d" "${normalized_array[@]}"
+              # Check if it contains any hex characters (a-f, A-F) - likely a commit hash
+              elif [[ "$input" =~ [a-fA-F] ]]; then
+                  # For commit hashes or hex strings, return as-is (preserve leading zeros)
+                  printf "%s" "$input"
+              # Check if it starts with digits but has non-hex characters
+              elif [[ "$input" =~ ^[0-9]+[^0-9a-fA-F] ]]; then
+                  # For mixed strings starting with numbers, normalize leading zeros in numeric part
+                  local numeric_part="${input%%[^0-9]*}"
+                  local remaining_part="${input#${numeric_part}}"
+                  printf "%d%s" "$numeric_part" "$remaining_part"
+              else
+                  # For pure strings or anything else, return as-is
+                  printf "%s" "$input"
+              fi
           }
 
-          for iray in "${!current_versions[@]}"; do
-            if [[ ! "$iray" =~ ^(CONFIG_SUB_REV|MUSL_VER)$ ]]; then
-              if [[ "$(ver "${current_versions[$iray]}")" -lt "$(ver "${remote_versions[$iray]}")" ]]; then
-                printf "%-14s current:%-15s remote:%-15s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
+          for iray in "${!current_release_versions[@]}"; do
+            if [[ "$(ver "${current_release_versions[$iray]}")" != "$(ver "${upstream_versions[$iray]}")" ]]; then
 
+              printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
+              printf "%-14s current:%-15s remote:%-15s %s\n" "$iray" "${current_release_versions[$iray]}" "${upstream_versions[$iray]}" "< New version available - workflow will be triggered" | tee -a $GITHUB_STEP_SUMMARY
+              printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+              if [[ "$iray" == "CONFIG_SUB_REV" ]]; then
+                printf '%s' "$(curl -sL "${upstream_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "hashes/config.sub.${upstream_versions[CONFIG_SUB_REV]}.sha1"
+              else
                 # get updated shasum of $iray
-                curl -sL "${remote_urls_dl[$iray]}" -o "${remote_urls_dl[$iray]##*/}"
-                sha1sum "${remote_urls_dl[$iray]##*/}" > "hashes/${remote_urls_dl[$iray]##*/}.sha1"
-                rm -f "${remote_urls_dl[$iray]##*/}"
+                curl -sL "${upstream_urls_dl[$iray]}" -o "${upstream_urls_dl[$iray]##*/}"
+                sha1sum "${upstream_urls_dl[$iray]##*/}" > "hashes/${upstream_urls_dl[$iray]##*/}.sha1"
+                rm -f "${upstream_urls_dl[$iray]##*/}"
+              fi
 
-                # Extract package name more robustly
-                patch_dir_prefix="${iray%_VER}"
-                patch_dir_prefix="${patch_dir_prefix,,}" # Convert to lowercase
+              # Extract package name more robustly
+              patch_dir_prefix="${iray%_VER}"
+              patch_dir_prefix="${patch_dir_prefix,,}" # Convert to lowercase
 
-                current_patch_dir="patches/${patch_dir_prefix}-${current_versions[$iray]}"
-                new_patch_dir="patches/${patch_dir_prefix}-${remote_versions[$iray]}"
+              current_patch_dir="patches/${patch_dir_prefix}-${current_release_versions[$iray]}"
+              new_patch_dir="patches/${patch_dir_prefix}-${upstream_versions[$iray]}"
 
-                if [[ -d "${current_patch_dir}" ]]; then
-                    printf '\n%s\n\n' "${current_patch_dir} exists"
-                    printf '%s\n\n' "Does the ${patch_dir_prefix}-${current_versions[$iray]} directory has any patches?" >> $GITHUB_STEP_SUMMARY
-                    if (
-                        shopt -s nullglob dotglob
-                        f=("${current_patch_dir}"/*.diff)
-                        ((${#f[@]}))
-                    ); then
-                        printf '%s\n\n' "It does ... copying them to ${new_patch_dir}" >> $GITHUB_STEP_SUMMARY
-                        # Create directory and copy patches
-                        mkdir -p "${new_patch_dir}"
-                        cp -rf "${current_patch_dir}"/* "${new_patch_dir}/"
-                    else
-                        printf '\n%s\n\n' '${patch_dir_prefix}-${current_versions[$iray]} directory is empty' >> $GITHUB_STEP_SUMMARY
-                    fi
+              ###### copy patches ############################################################
+              if [[ -d "${current_patch_dir}" ]]; then
+                printf '\n%b\n\n' "\`${current_patch_dir}\` exists"
+                printf '%b\n\n' "Does the \`${patch_dir_prefix}-${current_release_versions[$iray]}\` directory has any patches?" >> $GITHUB_STEP_SUMMARY
+                if (
+                  shopt -s nullglob dotglob
+                  f=("${current_patch_dir}"/*.diff)
+                  ((${#f[@]}))
+                ); then
+                  printf '%b\n\n' "> [!NOTE]\n> It does ...\n> copying them to \`${new_patch_dir}\`" >> $GITHUB_STEP_SUMMARY
+
+                  # Create directory and copy patches
+                  mkdir -p "${new_patch_dir}"
+                  cp -rf "${current_patch_dir}"/* "${new_patch_dir}/"
+
+                  printf '\n%b\n\n' "> [!Warning]\n> Testing which patches brought forward actually work\n> Remove any that fail" >> $GITHUB_STEP_SUMMARY
+
+                  # test patches apply to new version and if not delete them from the new patch directory
+                  tmp_archive="${upstream_urls_dl[$iray]##*/}"
+                  tmp_dir="${tmp_archive%.tar.*}"
+
+                  curl -sL "${upstream_urls_dl[$iray]}" -o "${tmp_archive}"
+                  tar -xf "${tmp_archive}"
+                  chmod +x help/patch.sh
+                  printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
+                  help/patch.sh "${new_patch_dir}" -r "${tmp_dir}" --delete-failed --verbose | tee -a $GITHUB_STEP_SUMMARY
+                  printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
                 else
-                    printf '\n%s\n\n' "${current_patch_dir} does not exist" >> $GITHUB_STEP_SUMMARY
-                    printf '%s\n\n' "no patches to copy over to new version" >> $GITHUB_STEP_SUMMARY
+                  printf '\n%b\n' "\`${patch_dir_prefix}-${current_release_versions[$iray]}\` directory is empty" >> $GITHUB_STEP_SUMMARY
                 fi
-
-                printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
-                build_new_release=true
               else
-                printf "%-14s current:%-15s remote:%-15s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
+                printf '%b\n\n' "> [!NOTE]\n> \`${current_patch_dir}\` does not exist\n> no patches to copy over to new version" >> $GITHUB_STEP_SUMMARY
               fi
-            fi
 
-            if [[ "$iray" =~ ^(CONFIG_SUB_REV|MUSL_VER)$ ]]; then
-              if [[ "${current_versions[$iray]}" != "${remote_versions[$iray]}" ]]; then
-                printf "%-14s current:%-15s remote:%-15s %s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}" "< New version available - workflow will be triggered"
-
-                if [[ "$iray" != "MUSL_VER" ]]; then
-                  if [[ -z "${use_local_config_sub}" ]]; then
-                      printf '%s' "$(curl -sL "${remote_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "hashes/config.sub.${remote_versions[CONFIG_SUB_REV]}.sha1"
-                  fi
-                fi
-
-                printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
-                build_new_release=true
-              else
-                printf "%-14s current:%-15s remote:%-15s\n" "$iray" "${current_versions[$iray]}" "${remote_versions[$iray]}"
-              fi
+              printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
+              build_new_release=true
+            else
+              printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
+              printf "%-14s current:%-15s remote:%-15s\n" "$iray" "${current_release_versions[$iray]}" "${upstream_versions[$iray]}" | tee -a $GITHUB_STEP_SUMMARY
+              printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
             fi
           done
 
-          if [[ ${bypass_check} == 'true' ]] ; then
+          ###### copy patches ############################################################
+
+          cat > "versions.json" <<- VERSIONS_JSON
+          {
+            "CONFIG_SUB_REV": "${upstream_versions[CONFIG_SUB_REV]}",
+            "GCC_VER": "${upstream_versions[GCC_VER]}",
+            "BINUTILS_VER": "${upstream_versions[BINUTILS_VER]}",
+            "MUSL_VER": "${upstream_versions[MUSL_VER]}",
+            "GMP_VER": "${upstream_versions[GMP_VER]}",
+            "MPC_VER": "${upstream_versions[MPC_VER]}",
+            "MPFR_VER": "${upstream_versions[MPFR_VER]}",
+            "LINUX_VER": "${upstream_versions[LINUX_VER]}",
+            "ISL_VER": "${upstream_versions[ISL_VER]}"
+          }
+          VERSIONS_JSON
+
+          printf '%s\n\n' "# existing versions.mak" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "\`\`\`make" >> $GITHUB_STEP_SUMMARY
+          cat versions.mak >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+          cat > "versions.mak" <<- VERSIONS_MAK
+          CONFIG_SUB_REV = ${upstream_versions[CONFIG_SUB_REV]}
+          # GCC_VER = 15.1.0 will get a release asset - requires sha1 hash file.
+          # GCC_VER = 16-2025072 will get a snapshot asset - requires sha1 hash file.
+          GCC_VER = ${upstream_versions[GCC_VER]}
+          # BINUTILS_VER = 2.44 will get a release asset - requires sha1 hash file.
+          # BINUTILS_VER = 2.44.90 will get a snapshot asset - requires sha1 hash file.
+          BINUTILS_VER = ${upstream_versions[BINUTILS_VER]}
+          # MUSL_VER = 1.2.5 will get a release asset - requires sha1 hash file.
+          # MUSL_VER = 8fd5d0318763 will get that commit asset - requires sha1 hash file.
+          # MUSL_VER = git- prefix will clone that branch i.e. git-master - no sha1 hash file is required for this method.
+          MUSL_VER = ${upstream_versions[MUSL_VER]}
+          GMP_VER = ${upstream_versions[GMP_VER]}
+          MPC_VER = ${upstream_versions[MPC_VER]}
+          MPFR_VER = ${upstream_versions[MPFR_VER]}
+          LINUX_VER = ${upstream_versions[LINUX_VER]}
+          ISL_VER = ${upstream_versions[ISL_VER]}
+          VERSIONS_MAK
+
+          printf '%b\n\n' "# updated versions.mak" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "\`\`\`make\n$(cat versions.mak)\n\`\`\`\n" >> $GITHUB_STEP_SUMMARY
+
+          printf '%b\n' "# Remote versions outputs summary" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "\`\`\`make" >> $GITHUB_STEP_SUMMARY
+          for iray in "${!current_release_versions[@]}"; do
+            printf '%b\n' "$iray: ${upstream_versions[$iray]}" >> $GITHUB_STEP_SUMMARY
+          done
+          printf '\n%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+          if [[ ${bypass_update_check} == 'true' ]] ; then
             printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
             build_new_release=true
           fi
 
-          printf '%b\n' "# build_new_release?" >> $GITHUB_STEP_SUMMARY
-          printf '\n%s\n\n' "build_new_release=${build_new_release}" >> $GITHUB_STEP_SUMMARY
-
-          if [[ "${build_new_release}" == "true" ]]; then
-          cat > "versions.json" <<- VERSIONS_JSON
-          {
-            "CONFIG_SUB_REV": "${remote_versions[CONFIG_SUB_REV]}",
-            "GCC_VER": "${remote_versions[GCC_VER]}",
-            "BINUTILS_VER": "${remote_versions[BINUTILS_VER]}",
-            "MUSL_VER": "${remote_versions[MUSL_VER]}",
-            "GMP_VER": "${remote_versions[GMP_VER]}",
-            "MPC_VER": "${remote_versions[MPC_VER]}",
-            "MPFR_VER": "${remote_versions[MPFR_VER]}",
-            "LINUX_VER": "${remote_versions[LINUX_VER]}",
-            "ISL_VER": "${remote_versions[ISL_VER]}"
-          }
-          VERSIONS_JSON
-
-            printf '\n%s\n\n' "# existing versions.mak" >> $GITHUB_STEP_SUMMARY
-            cat versions.mak >> $GITHUB_STEP_SUMMARY
-
-          cat > "versions.mak" <<- VERSIONS_MAK
-          CONFIG_SUB_REV = ${remote_versions[CONFIG_SUB_REV]}
-          GCC_VER = ${remote_versions[GCC_VER]}
-          BINUTILS_VER = ${remote_versions[BINUTILS_VER]}
-          MUSL_VER = ${remote_versions[MUSL_VER]}
-          GMP_VER = ${remote_versions[GMP_VER]}
-          MPC_VER = ${remote_versions[MPC_VER]}
-          MPFR_VER = ${remote_versions[MPFR_VER]}
-          LINUX_VER = ${remote_versions[LINUX_VER]}
-          ISL_VER = ${remote_versions[ISL_VER]}
-          VERSIONS_MAK
-
-            printf '\n%s\n\n' "# updated versions.mak" >> $GITHUB_STEP_SUMMARY
-            cat versions.mak >> $GITHUB_STEP_SUMMARY
+          if [[ ${bypass_git_commit} == 'true' ]] ; then
+            printf '%b\n\n' "> [!WARNING]\n> Local file changes will be: \`skipped\`" >> $GITHUB_STEP_SUMMARY
+          else
+            printf '%b\n\n' "> [!WARNING]\n> Local file changes will be: \`committed\`" >> $GITHUB_STEP_SUMMARY
           fi
 
-          printf '%b\n' "# Remote versions outputs summary" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "CONFIG_SUB_REV: ${remote_versions[CONFIG_SUB_REV]}" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "GCC_VER: ${remote_versions[GCC_VER]}" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "BINUTILS_VER: ${remote_versions[BINUTILS_VER]}" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "MUSL_VER: ${remote_versions[MUSL_VER]}" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "GMP_VER: ${remote_versions[GMP_VER]}" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "MPC_VER: ${remote_versions[MPC_VER]}" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "MPFR_VER: ${remote_versions[MPFR_VER]}" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "LINUX_VER: ${remote_versions[LINUX_VER]}" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "ISL_VER: ${remote_versions[ISL_VER]}" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "# build_new_release?" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "\`\`\`bash\nbuild_new_release=${build_new_release}\n\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       # This step only runs of if steps.boot_strap_release.outputs.build_new_release == 'true'
-      # This will only be set if the versions.json value from the latest release is different to the remote version. Not the local version.mak version
+      # This will only be set if the versions.json value from the latest release is different to the remote version. Not the local version.mak
       # So if the bypass check is used the automatic change by the workflow won't be committed and the build will use the version.mak
       # Because the upstream version and the latest release version are the same. The versions.mak is not used in the version check.
       # Allowing us to build whatever combinations we define in the versions.mak
       - name: Commit and Push
-        if: ${{ steps.boot_strap_release.outputs.build_new_release == 'true' }}
+        if: ${{ steps.boot_strap_release.outputs.build_new_release == 'true' && env.bypass_git_commit == 'false' }}
         run: |
           # Only run git commands if there are actual changes
           if [[ -f "versions.json" ]] && [[ -f "versions.mak" ]] && [[ -d "hashes" ]] && [[ -d "patches" ]] && [[ -f "config.sub" ]]; then
-            git add versions.json versions.mak hashes/*.sha1 patches/* config.sub || true
+            git add versions.json versions.mak hashes/*.sha1 patches/* sources/config.sub || true
             git status --porcelain | grep -q . && {
             git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' commit -m "Automated commit by GitHub Actions"
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
-            } || echo "No changes detected"
+            } || printf '%s\n' "No changes detected"
           fi
