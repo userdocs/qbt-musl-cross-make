@@ -9,8 +9,9 @@ trim_trailing_whitespace = true
 insert_final_newline = true
 
 [*.md]
-indent_style = space
 trim_trailing_whitespace = false
+indent_style = space
+indent_size = 2
 
 [*.{json,yml,yaml}]
 indent_style = space
@@ -20,5 +21,3 @@ indent_size = 2
 indent_style = space
 indent_size = 0
 
-[Jamfile]
-indent_style = tabs

@@ -1,102 +1,98 @@
-        {
-          "build_host": [
-            "ubuntu-24.04",
-            "ubuntu-24.04-arm"
-          ],
-          "arch_type": [
-            "aarch64-linux-musl",
-            "arm-linux-musleabi",
-            "arm-linux-musleabihf",
-            "armv6-linux-musleabihf",
-            "armv7l-linux-musleabihf",
-            "i686-linux-musl",
-            "x86_64-linux-musl",
-            "mips-linux-musl",
-            "mipsel-linux-musl",
-            "mips64-linux-musl",
-            "mips64el-linux-musl",
-            "powerpc-linux-musl",
-            "powerpc64le-linux-musl",
-            "s390x-linux-musl",
-            "riscv64-linux-musl",
-            "loongarch64-linux-musl"
-          ],
-          "include": [
-            {
-              "build_host": "ubuntu-24.04",
-              "alpine_prefix": "amd64",
-              "triple_prefix": "x86_64",
-              "docker_platform": "amd64"
-            },
-            {
-              "build_host": "ubuntu-24.04-arm",
-              "alpine_prefix": "arm64v8",
-              "triple_prefix": "aarch64",
-              "docker_platform": "arm64"
-            },
-            {
-              "arch_type": "aarch64-linux-musl",
-              "arch_config": "--with-arch=armv8-a --with-abi=lp64"
-            },
-            {
-              "arch_type": "arm-linux-musleabi",
-              "arch_config": "--with-arch=armv5te --with-tune=arm926ej-s --with-float=soft --with-abi=aapcs-linux"
-            },
-            {
-              "arch_type": "arm-linux-musleabihf",
-              "arch_config": "--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
-            },
-            {
-              "arch_type": "armv6-linux-musleabihf",
-              "arch_config": "--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
-            },
-            {
-              "arch_type": "armv7l-linux-musleabihf",
-              "arch_config": "--with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb"
-            },
-            {
-              "arch_type": "i686-linux-musl",
-              "arch_config": "--with-arch=pentium-m --with-fpmath=sse --with-tune=generic --enable-cld"
-            },
-            {
-              "arch_type": "x86_64-linux-musl",
-              "arch_config": "--with-arch=x86-64 --with-tune=generic"
-            },
-            {
-              "arch_type": "mips-linux-musl",
-              "arch_config": "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
-            },
-            {
-              "arch_type": "mipsel-linux-musl",
-              "arch_config": "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
-            },
-            {
-              "arch_type": "mips64-linux-musl",
-              "arch_config": "--with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64"
-            },
-            {
-              "arch_type": "mips64el-linux-musl",
-              "arch_config": "--with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64"
-            },
-            {
-              "arch_type": "powerpc-linux-musl",
-              "arch_config": "--enable-secureplt --enable-decimal-float=no"
-            },
-            {
-              "arch_type": "powerpc64le-linux-musl",
-              "arch_config": "--with-abi=elfv2 --enable-secureplt --enable-decimal-float=no --enable-targets=powerpcle-linux"
-            },
-            {
-              "arch_type": "s390x-linux-musl",
-              "arch_config": "--with-arch=z196 --with-tune=zEC12 --with-zarch --with-long-double-128 --enable-decimal-float"
-            },
-            {
-              "arch_type": "riscv64-linux-musl",
-              "arch_config": "--with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic"
-            },
-            {
-              "arch_type": "loongarch64-linux-musl",
-              "arch_config": "--with-arch=la64v1.0 --with-abi=lp64d"
-            }
-          ]
-        }
+{
+  "build_host": [
+    "ubuntu-24.04",
+    "ubuntu-24.04-arm"
+  ],
+  "arch_type": [
+    "aarch64-linux-musl",
+    "arm-linux-musleabi",
+    "arm-linux-musleabihf",
+    "armv6-linux-musleabihf",
+    "armv7l-linux-musleabihf",
+    "i686-linux-musl",
+    "x86_64-linux-musl",
+    "mips-linux-musl",
+    "mipsel-linux-musl",
+    "mips64-linux-musl",
+    "mips64el-linux-musl",
+    "powerpc-linux-musl",
+    "powerpc64le-linux-musl",
+    "s390x-linux-musl",
+    "riscv64-linux-musl",
+    "loongarch64-linux-musl"
+  ],
+  "include": [
+    {
+      "build_host": "ubuntu-24.04",
+      "triple_prefix": "x86_64"
+    },
+    {
+      "build_host": "ubuntu-24.04-arm",
+      "triple_prefix": "aarch64"
+    },
+    {
+      "arch_type": "aarch64-linux-musl",
+      "arch_config": "--with-arch=armv8-a --with-abi=lp64"
+    },
+    {
+      "arch_type": "arm-linux-musleabi",
+      "arch_config": "--with-arch=armv5te --with-tune=arm926ej-s --with-float=soft --with-abi=aapcs-linux"
+    },
+    {
+      "arch_type": "arm-linux-musleabihf",
+      "arch_config": "--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
+    },
+    {
+      "arch_type": "armv6-linux-musleabihf",
+      "arch_config": "--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
+    },
+    {
+      "arch_type": "armv7l-linux-musleabihf",
+      "arch_config": "--with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb"
+    },
+    {
+      "arch_type": "i686-linux-musl",
+      "arch_config": "--with-arch=pentium-m --with-fpmath=sse --with-tune=generic --enable-cld"
+    },
+    {
+      "arch_type": "x86_64-linux-musl",
+      "arch_config": "--with-arch=x86-64 --with-tune=generic"
+    },
+    {
+      "arch_type": "mips-linux-musl",
+      "arch_config": "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
+    },
+    {
+      "arch_type": "mipsel-linux-musl",
+      "arch_config": "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
+    },
+    {
+      "arch_type": "mips64-linux-musl",
+      "arch_config": "--with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64"
+    },
+    {
+      "arch_type": "mips64el-linux-musl",
+      "arch_config": "--with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64"
+    },
+    {
+      "arch_type": "powerpc-linux-musl",
+      "arch_config": "--enable-secureplt --enable-decimal-float=no"
+    },
+    {
+      "arch_type": "powerpc64le-linux-musl",
+      "arch_config": "--with-abi=elfv2 --enable-secureplt --enable-decimal-float=no --enable-targets=powerpcle-linux"
+    },
+    {
+      "arch_type": "s390x-linux-musl",
+      "arch_config": "--with-arch=z196 --with-tune=zEC12 --with-zarch --with-long-double-128 --enable-decimal-float"
+    },
+    {
+      "arch_type": "riscv64-linux-musl",
+      "arch_config": "--with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic"
+    },
+    {
+      "arch_type": "loongarch64-linux-musl",
+      "arch_config": "--with-arch=la64v1.0 --with-abi=lp64d"
+    }
+  ]
+}
