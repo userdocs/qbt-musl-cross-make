@@ -1,4 +1,4 @@
-CONFIG_SUB_REV = a2287c3041a3
+CONFIG_SUB_REV = a2287c30
 # GCC_VER = 15.1.0 will get a release asset - requires sha1 hash file.
 # GCC_VER = 16-2025072 will get a snapshot asset - requires sha1 hash file.
 GCC_VER = 15.1.0
@@ -12,5 +12,5 @@ MUSL_VER = 8fd5d0318763
 GMP_VER = 6.3.0
 MPC_VER = 1.3.1
 MPFR_VER = 4.2.2
-LINUX_VER = 6.15.8
+LINUX_VER = 6.16
 ISL_VER = 0.27
