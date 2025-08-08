@@ -100,7 +100,7 @@ jobs:
           subject-path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
 
       - name: Host - Docker - upload artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: "${{ matrix.triple_prefix }}-${{ matrix.arch_type }}-toolchain"
           path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
