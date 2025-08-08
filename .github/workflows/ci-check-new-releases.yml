@@ -204,7 +204,7 @@ jobs:
                   tar -xf "${tmp_archive}"
                   chmod +x help/patch.sh
                   printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
-                  help/patch.sh "${new_patch_dir}" -r "${tmp_dir}" --delete-failed --verbose | tee -a $GITHUB_STEP_SUMMARY
+                  help/patch.sh "${new_patch_dir}" -r "${tmp_dir}" --delete-failed --verbose | sed 's/\x1b\[[0-9;]*m//g' | tee -a $GITHUB_STEP_SUMMARY
                   printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
                 else
                   printf '\n%b\n' "\`${patch_dir_prefix}-${current_release_versions[$iray]}\` directory is empty" >> $GITHUB_STEP_SUMMARY
