@@ -9,13 +9,13 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - name: Host - Download artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           path: toolchains
           pattern: "*-toolchain"
@@ -30,7 +30,7 @@ jobs:
         run: printf '%s\n' "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
 
       - name: Create release - tag - assets
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@bcfe5470707e8832e12347755757cec0eb3c22af # v1
         with:
           prerelease: false
           artifacts: "toolchains/*.tar.xz,versions.json"

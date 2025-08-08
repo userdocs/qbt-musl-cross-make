@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
@@ -53,7 +53,7 @@ jobs:
           done
 
       - name: Host - Cache sources (restore)
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4
         with:
           path: ${{ github.workspace }}/sources
           key: mcm-sources-${{ hashFiles('versions.mak') }}
@@ -95,12 +95,12 @@ jobs:
           XZ_OPT=-9T0 tar -cvJf ${matrix_triple_prefix}-${matrix_arch_type}.tar.xz ${matrix_arch_type}/
 
       - name: Host - Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
 
       - name: Host - Docker - upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: "${{ matrix.triple_prefix }}-${{ matrix.arch_type }}-toolchain"
           path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
