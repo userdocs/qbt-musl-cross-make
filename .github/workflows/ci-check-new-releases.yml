@@ -295,7 +295,7 @@ jobs:
         if: ${{ steps.boot_strap_release.outputs.build_new_release == 'true' && env.bypass_git_commit == 'false' }}
         run: |
           # Only run git commands if there are actual changes
-          if [[ -f "versions.json" ]] && [[ -f "versions.mak" ]] && [[ -d "hashes" ]] && [[ -d "patches" ]] && [[ -f "config.sub" ]]; then
+          if [[ -f "versions.json" ]] && [[ -f "versions.mak" ]] && [[ -d "hashes" ]] && [[ -d "patches" ]] && [[ -f "sources/config.sub" ]]; then
             git add versions.json versions.mak hashes/*.sha1 patches/* sources/config.sub || true
             git status --porcelain | grep -q . && {
             git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' commit -m "Automated commit by GitHub Actions"
