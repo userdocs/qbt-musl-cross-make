@@ -68,7 +68,7 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5
+        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5
         with:
           concurrent_skipping: "always"
           cancel_others: "false"
@@ -170,7 +170,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           persist-credentials: false
 
@@ -333,7 +333,7 @@ jobs:
       retries: ${{ needs.scheduled_defaults.outputs.retries || '3' }}
       distinct_id: ${{ github.event.inputs.distinct_id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false

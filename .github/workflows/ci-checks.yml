@@ -14,13 +14,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - name: Run the sh-checker
-        uses: luizm/action-sh-checker@v0.9.0
+        uses: luizm/action-sh-checker@17bd25a6ee188d2b91f677060038f4ba37ba14b2 # v0.9.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SHELLCHECK_OPTS: -e SC2034,SC1091 # It is possible to exclude some shellcheck warnings.
@@ -47,7 +47,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
