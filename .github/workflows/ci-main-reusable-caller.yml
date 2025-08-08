@@ -6,7 +6,7 @@ on:
       gnu_mirror_url:
         description: "Which GNU mirror to use?"
         required: true
-        default: "https://mirrors.dotsrc.org/gnu"
+        default: "https://ftp.gnu.org/gnu"
         type: string
       only_aarch64_runners:
         description: "aarch64 matrix"
