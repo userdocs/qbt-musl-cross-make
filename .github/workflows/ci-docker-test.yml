@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Host - Bootstrap qemu
-        uses: userdocs/actions/qemu@main
+        uses: userdocs/actions/qemu@14953114cb6e6734621fcb56513a9b751476b60f # v1.0.0
 
       - name: bootstrap
         run: >
