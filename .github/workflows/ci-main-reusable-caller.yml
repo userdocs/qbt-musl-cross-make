@@ -82,7 +82,7 @@ jobs:
     permissions:
       contents: read
     outputs:
-      gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url || 'https://mirrors.dotsrc.org/gnu/'  }}
+      gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url || 'https://ftp.gnu.org/gnu'  }}
       only_aarch64_runners: ${{ github.event.inputs.only_aarch64_runners || 'false' }}
       only_x86_64_runners: ${{ github.event.inputs.only_x86_64_runners || 'false' }}
       aarch64_x86_64_runners: ${{ github.event.inputs.aarch64_x86_64_runners || 'true' }}
