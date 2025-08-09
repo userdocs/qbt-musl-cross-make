@@ -1,6 +1,14 @@
 repos:
   - repo: local
     hooks:
+      - id: pre-commit-autoupdate
+        name: Update pre-commit hooks
+        entry: pwsh -c "pre-commit autoupdate; git add .pre-commit-config.yaml"
+        language: system
+        pass_filenames: false
+
+  - repo: local
+    hooks:
       - id: make-scripts-executable
         name: Make script files executable
         entry: bash -c 'git add --chmod=+x build-helper.bash cowpatch.sh'
