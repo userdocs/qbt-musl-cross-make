@@ -6,7 +6,7 @@ on:
       gnu_mirror_url:
         description: "Which GNU mirror to use?"
         required: true
-        default: "https://ftp.gnu.org/gnu"
+        default: "https://ftp.gnu.org/gnu" # This is the workflow_dispatch url. change scheduled_defaults url used in scheduled workflows and source_urls.mak for fallback
         type: string
       only_aarch64_runners:
         description: "aarch64 matrix"
