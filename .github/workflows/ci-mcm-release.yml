@@ -30,7 +30,7 @@ jobs:
         run: printf '%s\n' "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
 
       - name: Create release - tag - assets
-        uses: ncipollo/release-action@bcfe5470707e8832e12347755757cec0eb3c22af # v1
+        uses: ncipollo/release-action@bcfe5470707e8832e12347755757cec0eb3c22af # v1.18.0
         with:
           prerelease: false
           artifacts: "toolchains/*.tar.xz,versions.json"
