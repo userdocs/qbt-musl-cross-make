@@ -1,7 +1,7 @@
 CONFIG_SUB_REV = a2287c3041a3
 # GCC_VER = 15.1.0 will get a release asset - requires sha1 hash file.
 # GCC_VER = 16-2025072 will get a snapshot asset - requires sha1 hash file.
-GCC_VER = 15.2.0
+GCC_VER = 15.1.0
 # BINUTILS_VER = 2.44 will get a release asset - requires sha1 hash file.
 # BINUTILS_VER = 2.44.90 will get a snapshot asset - requires sha1 hash file.
 BINUTILS_VER = 2.45
