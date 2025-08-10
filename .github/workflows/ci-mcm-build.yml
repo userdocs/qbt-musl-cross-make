@@ -61,7 +61,7 @@ jobs:
       - name: Host - Github cache files - update timestamps
         run: find ${{ github.workspace }}/sources/ -type f -exec touch -a -m {} +
 
-      - uses: userdocs/actions/qbt_docker@14953114cb6e6734621fcb56513a9b751476b60f # v1.0.0
+      - uses: userdocs/actions/qbt_docker@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
         with:
             container_name: ${{ env.container_name }}
             os_id: "alpine"
