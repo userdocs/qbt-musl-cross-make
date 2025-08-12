@@ -75,14 +75,48 @@ jobs:
           skip_after_successful_duplicate: false
           do_not_skip: ""
 
-  scheduled_defaults:
+  mirror_url:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
-    needs: [skip_duplicate_job]
+    needs: ["skip_duplicate_job"]
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
     outputs:
-      gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url || 'https://ftp.gnu.org/gnu'  }}
+      gcc_version: ${{ steps.set_mirror_url.outputs.gcc_version }}
+      binutils_version: ${{ steps.set_mirror_url.outputs.binutils_version }}
+      gnu_mirror_url: ${{ steps.set_mirror_url.outputs.gnu_mirror_url }}
+    steps:
+      - name: Set mirror URL dynamically
+        id: set_mirror_url
+        env:
+          inputs_gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url || 'https://ftp.gnu.org/gnu' }}
+        run: |
+          # This helper script checks upstream gcc and binutils versions from sourceware then checks if gnu mirrors actually work
+          # It will try to use the mirror url provided in inputs and test if it works. If that fails it will try to use the script array to test the mirrors
+          # If they do work, we check if they actually have the latest version of gcc and binutils assets we need.
+          # Since it is getting version from upstream it is not relying on a mirror being updated to determine the latest version.
+          # Instead it checks if the mirror actually has the latest version assets we need since we know what the latest version is.
+
+          curl -sL "https://raw.githubusercontent.com/userdocs/voding/refs/heads/main/musl-cross-make/simple-source" > simple-source
+          chmod +x simple-source
+
+          # simple upstream sourceware version outputs for gcc and binutils
+          printf '%s\n' "gcc_version=$(./simple-source gcc)" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
+          printf '%s\n' "binutils_version=$(./simple-source binutils)" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
+
+          # Mirror tests. starting with the input mirror url and falling back to an array of mirrors
+          printf '%s\n' "gnu_mirror_url=$(./simple-source "${inputs_gnu_mirror_url}")" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
+
+  scheduled_defaults:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
+    needs: ["skip_duplicate_job", "mirror_url"]
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    outputs:
+      gcc_version: ${{ needs.mirror_url.outputs.gcc_version }}
+      binutils_version: ${{ needs.mirror_url.outputs.binutils_version }}
+      gnu_mirror_url: ${{ needs.mirror_url.outputs.gnu_mirror_url }}
       only_aarch64_runners: ${{ github.event.inputs.only_aarch64_runners || 'false' }}
       only_x86_64_runners: ${{ github.event.inputs.only_x86_64_runners || 'false' }}
       aarch64_x86_64_runners: ${{ github.event.inputs.aarch64_x86_64_runners || 'true' }}
@@ -92,6 +126,7 @@ jobs:
       bypass_git_commit: ${{ github.event.inputs.bypass_git_commit || 'false' }}
       skip_rerun: ${{ github.event.inputs.skip_rerun || 'false' }}
       retries: ${{ github.event.inputs.retries || '3' }}
+
     steps:
       - name: Setting Outputs from inputs
         run: |
@@ -104,6 +139,8 @@ jobs:
     permissions:
       contents: read
     env:
+      gcc_version: ${{ needs.scheduled_defaults.outputs.gcc_version }}
+      binutils_version: ${{ needs.scheduled_defaults.outputs.binutils_version }}
       gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
       only_aarch64_runners: ${{ needs.scheduled_defaults.outputs.only_aarch64_runners }}
       only_x86_64_runners: ${{ needs.scheduled_defaults.outputs.only_x86_64_runners }}
@@ -120,7 +157,10 @@ jobs:
           printf '%b\n' "# Scheduled Defaults Outputs Summary" >> $GITHUB_STEP_SUMMARY
           printf '\n%b\n' ":octocat: Here is a summary of inputs set as string outputs that are used in workflows." >> $GITHUB_STEP_SUMMARY
 
+          printf '\n%b\n' "gcc_version: \`${gcc_version}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "binutils_version: \`${binutils_version}\`" >> $GITHUB_STEP_SUMMARY
           printf '\n%b\n' "gnu_mirror_url: \`${gnu_mirror_url}\`" >> $GITHUB_STEP_SUMMARY
+
           printf '\n%b\n' "only_aarch64_runners: \`${only_aarch64_runners}\`" >> $GITHUB_STEP_SUMMARY
           printf '\n%b\n' "only_x86_64_runners: \`${only_x86_64_runners}\`" >> $GITHUB_STEP_SUMMARY
           printf '\n%b\n' "aarch64_x86_64_runners: \`${aarch64_x86_64_runners}\`" >> $GITHUB_STEP_SUMMARY
@@ -133,7 +173,7 @@ jobs:
 
   ci-check-new-releases:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
-    needs: [skip_duplicate_job, scheduled_defaults]
+    needs: ["skip_duplicate_job", "scheduled_defaults"]
     concurrency:
       group: ci-check-new-releases
       cancel-in-progress: true
@@ -143,6 +183,8 @@ jobs:
     with:
       bypass_update_check: ${{ needs.scheduled_defaults.outputs.bypass_update_check }}
       bypass_git_commit: ${{ needs.scheduled_defaults.outputs.bypass_git_commit }}
+      gcc_version: ${{ needs.scheduled_defaults.outputs.gcc_version }}
+      binutils_version: ${{ needs.scheduled_defaults.outputs.binutils_version }}
       gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
 
   ci-bootstrap-matrix:

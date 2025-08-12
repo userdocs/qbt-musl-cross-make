@@ -9,6 +9,12 @@ on:
       bypass_git_commit:
         type: string
         required: false
+      gcc_version:
+        required: true
+        type: string
+      binutils_version:
+        required: true
+        type: string
       gnu_mirror_url:
         required: true
         type: string
@@ -27,6 +33,8 @@ jobs:
       bypass_update_check: ${{ inputs.bypass_update_check }}
       bypass_git_commit: ${{ inputs.bypass_git_commit }}
       gnu_mirror_url: ${{ inputs.gnu_mirror_url }}
+      gcc_version: ${{ inputs.gcc_version }}
+      binutils_version: ${{ inputs.binutils_version }}
       github_repository: ${{ github.repository }}
       github_workspace: ${{ github.workspace }}
       config_mak_upstream_test: ""
@@ -98,8 +106,8 @@ jobs:
           # upstream config.sub commit hash is set to config_sub_upstream
           declare -A upstream_versions
           upstream_versions[CONFIG_SUB_REV]="${config_sub_upstream}"
-          upstream_versions[GCC_VER]="$(curl -sL "${gnu_mirror_url}/gcc/" | ssed -Rn 's|(.*)href="gcc-(.+?)/"(.*)|\2|p' | sort -V | tail -n1)"
-          upstream_versions[BINUTILS_VER]="$(curl -sL "${gnu_mirror_url}/binutils/" | ssed -Rn 's|(.*)href="binutils-([0-9]+\.[0-9]+)\.tar\.xz"(.*)|\2|p' | tail -n1)"
+          upstream_versions[GCC_VER]="${gcc_version}"
+          upstream_versions[BINUTILS_VER]="${binutils_version}"
           upstream_versions[MUSL_VER]="$(git ls-remote "https://git.musl-libc.org/git/musl" | head -n1 | awk '{ print substr($1,1,12) }')"
           upstream_versions[GMP_VER]="$(curl -sL "${gnu_mirror_url}/gmp/" | ssed -Rn 's|(.*)href="gmp-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
           upstream_versions[MPC_VER]="$(curl -sL "${gnu_mirror_url}/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
