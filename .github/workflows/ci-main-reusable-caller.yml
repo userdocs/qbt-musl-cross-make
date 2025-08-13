@@ -97,15 +97,15 @@ jobs:
           # Since it is getting version from upstream it is not relying on a mirror being updated to determine the latest version.
           # Instead it checks if the mirror actually has the latest version assets we need since we know what the latest version is.
 
-          curl -sL "https://raw.githubusercontent.com/userdocs/voding/refs/heads/main/musl-cross-make/simple-source" > simple-source
-          chmod +x simple-source
+          curl -sL "https://raw.githubusercontent.com/userdocs/voding/refs/heads/main/musl-cross-make/simple_source" > simple_source
+          chmod +x simple_source
 
           # simple upstream sourceware version outputs for gcc and binutils
-          printf '%s\n' "gcc_version=$(./simple-source gcc)" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
-          printf '%s\n' "binutils_version=$(./simple-source binutils)" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
+          printf '%s\n' "gcc_version=$(./simple_source gcc)" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
+          printf '%s\n' "binutils_version=$(./simple_source binutils)" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
 
           # Mirror tests. starting with the input mirror url and falling back to an array of mirrors
-          printf '%s\n' "gnu_mirror_url=$(./simple-source "${inputs_gnu_mirror_url}")" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
+          printf '%s\n' "gnu_mirror_url=$(./simple_source "${inputs_gnu_mirror_url}")" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
 
   scheduled_defaults:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
