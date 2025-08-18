@@ -28,7 +28,7 @@ jobs:
       build_new_release: ${{ steps.boot_strap_release.outputs.build_new_release }}
     runs-on: ubuntu-24.04-arm
     env:
-      GH_TOKEN: "${{ github.token}}"
+      GH_TOKEN: "${{ github.token }}"
       build_new_release: "false"
       bypass_update_check: ${{ inputs.bypass_update_check }}
       bypass_git_commit: ${{ inputs.bypass_git_commit }}
