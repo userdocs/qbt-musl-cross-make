@@ -6,7 +6,7 @@ on:
       gnu_mirror_url:
         description: "Which GNU mirror to use?"
         required: true
-        default: "https://ftp.gnu.org/gnu" # This is the workflow_dispatch url. change scheduled_defaults url used in scheduled workflows and source_urls.mak for fallback
+        default: "https://ftpmirror.gnu.org/gnu" # This is the workflow_dispatch url. change scheduled_defaults url used in scheduled workflows and source_urls.mak for fallback
         type: string
       only_aarch64_runners:
         description: "aarch64 matrix"
@@ -89,7 +89,7 @@ jobs:
       - name: Set mirror URL dynamically
         id: set_mirror_url
         env:
-          inputs_gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url || 'https://ftp.gnu.org/gnu' }}
+          inputs_gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url || 'https://ftpmirror.gnu.org/gnu' }}
         run: |
           # This helper script checks upstream gcc and binutils versions from sourceware then checks if gnu mirrors actually work
           # It will try to use the mirror url provided in inputs and test if it works. If that fails it will try to use the script array to test the mirrors
@@ -97,7 +97,7 @@ jobs:
           # Since it is getting version from upstream it is not relying on a mirror being updated to determine the latest version.
           # Instead it checks if the mirror actually has the latest version assets we need since we know what the latest version is.
 
-          curl -sL "https://raw.githubusercontent.com/userdocs/voding/refs/heads/main/musl-cross-make/simple_source" > simple_source
+          curl -sL "https://raw.githubusercontent.com/userdocs/voding/refs/heads/main/musl-cross-make/simple_source" -o simple_source
           chmod +x simple_source
 
           # simple upstream sourceware version outputs for gcc and binutils

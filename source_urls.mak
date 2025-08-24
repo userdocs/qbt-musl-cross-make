@@ -1,4 +1,4 @@
-GNU_SITE := $(if $(GNU_MIRROR_URL),$(GNU_MIRROR_URL),https://ftp.gnu.org/gnu)
+GNU_SITE := $(if $(GNU_MIRROR_URL),$(GNU_MIRROR_URL),https://ftpmirror.gnu.org/gnu)
 GCC_SITE = $(GNU_SITE)/gcc
 GCC_SNAP = https://gcc.gnu.org/pub/gcc/snapshots
 BINUTILS_SITE = $(GNU_SITE)/binutils
