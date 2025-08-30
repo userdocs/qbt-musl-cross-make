@@ -33,16 +33,17 @@ jobs:
           persist-credentials: false
 
       - name: Host - Bootstrap docker container
-        uses: userdocs/actions/qbt_docker@749d0010d8abde6c8a8ffc720856de5e799bdfea
+        uses: userdocs/actions/qbt_docker@fb511333f39562a36780f1cf900b0e0729b180e3 # v1.0.5
         with:
             os_id: "alpine"
             os_version_id: "edge"
-            custom_docker_commands: "-e GNU_MIRROR_URL=${{ inputs.gnu_mirror_url }}"
-            additional_alpine_apps: >
+            additional_apps: >
               autoconf automake bash bison build-base curl
               findutils flex git libarchive-tools libtool
               linux-headers patch perl pkgconf rsync
               tar texinfo xz zip zlib-dev zlib-static
+            custom_docker_commands: |
+              -e GNU_MIRROR_URL=${{ inputs.gnu_mirror_url }}
 
       - name: Host - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
         run: sed "s|GCC_CONFIG_FOR_TARGET +=|GCC_CONFIG_FOR_TARGET += ${matrix_arch_config}|" -i config.mak
