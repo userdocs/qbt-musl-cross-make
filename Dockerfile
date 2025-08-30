@@ -5,6 +5,18 @@ ARG ARCH
 ARG BASE_URL
 ARG QBT_CROSS_NAME
 
+# Add metadata labels for easy parsing
+LABEL org.opencontainers.image.base.name="alpine:edge" \
+      org.opencontainers.image.base.id="alpine" \
+      org.opencontainers.image.base.codename="edge" \
+      org.opencontainers.image.title="qbt-musl-cross-make" \
+      org.opencontainers.image.description="musl cross build toolchains" \
+      org.opencontainers.image.source="https://github.com/userdocs/qbt-musl-cross-make" \
+      org.opencontainers.image.url="https://github.com/userdocs/qbt-musl-cross-make" \
+      org.opencontainers.image.documentation="https://github.com/userdocs/qbt-musl-cross-make/blob/main/README.md" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.vendor="userdocs"
+
 ENV CHOST=${ARCH}
 ENV CC=${ARCH}-gcc
 ENV CXX=${ARCH}-g++
