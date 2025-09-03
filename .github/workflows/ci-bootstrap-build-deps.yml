@@ -43,4 +43,7 @@ jobs:
 
       - name: summaries
         if: steps.cache-sources.outputs.cache-hit != 'true'
-        run: printf '%b\n' "\`\`\`bash\n$(printf '%s\n' ${{ github.workspace }}/sources/* | xargs -n1 basename)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+        run: >
+          printf '%s\n' ${{ github.workspace }}/sources/* |
+            xargs -n1 basename | sed 's/\x1b\[[0-9;]*m//g' |
+              { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
