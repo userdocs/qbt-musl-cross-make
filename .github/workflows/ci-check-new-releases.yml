@@ -38,6 +38,9 @@ jobs:
       github_repository: ${{ github.repository }}
       github_workspace: ${{ github.workspace }}
       config_mak_upstream_test: ""
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -56,7 +59,7 @@ jobs:
           # Fast connectivity check with short timeout
           if curl -sLIo /dev/null --fail --connect-timeout 5 --max-time 10 "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD"; then
             # Use git ls-remote with timeout
-            if config_sub_upstream="$(timeout 30 git ls-remote "https://git.savannah.gnu.org/git/config.git" | head -n1 | awk '{ print substr($1,1,12) }')"; then
+            if config_sub_upstream="$(timeout 30 git ls-remote "https://git.savannah.gnu.org/git/config.git" | awk 'NR==1 {print substr($1,1,12); exit}')"; then
               printf '%s\n' "savannah.gnu.org is reachable, using git to get config.sub commit hash of remote version"
               printf '%b\n\n' "> [!NOTE]\n> \`config_mak_upstream_test:\` \`passed\` \n> config.sub commit hash retrieved via git-ls-remote" | tee -a $GITHUB_STEP_SUMMARY
             else
@@ -108,12 +111,12 @@ jobs:
           upstream_versions[CONFIG_SUB_REV]="${config_sub_upstream}"
           upstream_versions[GCC_VER]="${gcc_version}"
           upstream_versions[BINUTILS_VER]="${binutils_version}"
-          upstream_versions[MUSL_VER]="$(git ls-remote "https://git.musl-libc.org/git/musl" | head -n1 | awk '{ print substr($1,1,12) }')"
-          upstream_versions[GMP_VER]="$(curl -sL "${gnu_mirror_url}/gmp/" | ssed -Rn 's|(.*)href="gmp-(.+?)\.tar\.xz"(.*)|\2|p' | tail -n1)"
-          upstream_versions[MPC_VER]="$(curl -sL "${gnu_mirror_url}/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
-          upstream_versions[MPFR_VER]="$(curl -sL "${gnu_mirror_url}/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | tail -n1)"
-          upstream_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | ssed -Rn 's|(.*)href="linux-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | head -n1)"
-          upstream_versions[ISL_VER]="$(curl -sL https://sourceforge.net/projects/libisl/files | ssed -Rn 's|(.*)href="(.*)isl-(.+?)\.tar\.xz/download"(.*)|\3|p' | sort -V | tail -n1)"
+          upstream_versions[MUSL_VER]="$(git ls-remote "git://git.musl-libc.org/musl" | awk 'NR==1 {print substr($1,1,12); exit}')"
+          upstream_versions[GMP_VER]="$(curl -sL "${gnu_mirror_url}/gmp/" | ssed -Rn 's|(.*)href="gmp-(.+?)\.tar\.xz"(.*)|\2|p' | sort -rV | awk 'NR==1 {print; exit}')"
+          upstream_versions[MPC_VER]="$(curl -sL "${gnu_mirror_url}/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | awk 'NR==1 {print; exit}')"
+          upstream_versions[MPFR_VER]="$(curl -sL "${gnu_mirror_url}/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | awk 'NR==1 {print; exit}')"
+          upstream_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | ssed -Rn 's|(.*)href="linux-(.+?)\.tar\.gz"(.*)|\2|p' |sort -rV | awk 'NR==1 {print; exit}')"
+          upstream_versions[ISL_VER]="$(curl -sL https://sourceforge.net/projects/libisl/files | ssed -Rn 's|(.*)href="(.*)isl-(.+?)\.tar\.xz/download"(.*)|\3|p' | sort -rV | awk 'NR==1 {print; exit}')"
 
           # Verify the array entries and exit on failure
           for key in "${!upstream_versions[@]}"; do
@@ -167,9 +170,7 @@ jobs:
           for iray in "${!current_release_versions[@]}"; do
             if [[ "$(ver "${current_release_versions[$iray]}")" != "$(ver "${upstream_versions[$iray]}")" ]]; then
 
-              printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
-              printf "%-14s current:%-15s remote:%-15s %s\n" "$iray" "${current_release_versions[$iray]}" "${upstream_versions[$iray]}" "< New version available - workflow will be triggered" | tee -a $GITHUB_STEP_SUMMARY
-              printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              printf "%-14s current:%-15s remote:%-15s %s\n" "$iray" "${current_release_versions[$iray]}" "${upstream_versions[$iray]}" "< New version available - workflow will be triggered" | sed 's/\x1b\[[0-9;]*m//g' | { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
 
               if [[ "$iray" == "CONFIG_SUB_REV" ]]; then
                 printf '%s' "$(curl -sL "${upstream_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "hashes/config.sub.${upstream_versions[CONFIG_SUB_REV]}.sha1"
@@ -210,10 +211,8 @@ jobs:
 
                   curl -sL "${upstream_urls_dl[$iray]}" -o "${tmp_archive}"
                   tar -xf "${tmp_archive}"
-                  chmod +x help/patch.sh
-                  printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
-                  help/patch.sh "${new_patch_dir}" -r "${tmp_dir}" --delete-failed --verbose | sed 's/\x1b\[[0-9;]*m//g' | tee -a $GITHUB_STEP_SUMMARY
-                  printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+                  chmod +x help/patch_verify.bash
+                  help/patch_verify.bash "${new_patch_dir}" -r "${tmp_dir}" --delete-failed --verbose | sed 's/\x1b\[[0-9;]*m//g' | { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
                 else
                   printf '\n%b\n' "\`${patch_dir_prefix}-${current_release_versions[$iray]}\` directory is empty" >> $GITHUB_STEP_SUMMARY
                 fi
@@ -224,9 +223,7 @@ jobs:
               printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
               build_new_release=true
             else
-              printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
-              printf "%-14s current:%-15s remote:%-15s\n" "$iray" "${current_release_versions[$iray]}" "${upstream_versions[$iray]}" | tee -a $GITHUB_STEP_SUMMARY
-              printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              printf "%-14s current:%-15s remote:%-15s\n" "$iray" "${current_release_versions[$iray]}" "${upstream_versions[$iray]}" | sed 's/\x1b\[[0-9;]*m//g' | { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
             fi
           done
 
@@ -247,9 +244,7 @@ jobs:
           VERSIONS_JSON
 
           printf '%s\n\n' "# existing versions.mak" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "\`\`\`make" >> $GITHUB_STEP_SUMMARY
-          cat versions.mak >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cat versions.mak | sed 's/\x1b\[[0-9;]*m//g' | { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
 
           cat > "versions.mak" <<- VERSIONS_MAK
           CONFIG_SUB_REV = ${upstream_versions[CONFIG_SUB_REV]}
@@ -271,14 +266,12 @@ jobs:
           VERSIONS_MAK
 
           printf '%b\n\n' "# updated versions.mak" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "\`\`\`make\n$(cat versions.mak)\n\`\`\`\n" >> $GITHUB_STEP_SUMMARY
+          cat versions.mak | sed 's/\x1b\[[0-9;]*m//g' | { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
 
           printf '%b\n' "# Remote versions outputs summary" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "\`\`\`make" >> $GITHUB_STEP_SUMMARY
           for iray in "${!current_release_versions[@]}"; do
-            printf '%b\n' "$iray: ${upstream_versions[$iray]}" >> $GITHUB_STEP_SUMMARY
+            printf '%b\n' "$iray: ${upstream_versions[$iray]}" | sed 's/\x1b\[[0-9;]*m//g' | { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
           done
-          printf '\n%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
           if [[ ${bypass_update_check} == 'true' ]] ; then
             printf '%s\n' "build_new_release=true" >> $GITHUB_OUTPUT
@@ -291,8 +284,8 @@ jobs:
             printf '%b\n\n' "> [!WARNING]\n> Local file changes will be: \`committed\`" >> $GITHUB_STEP_SUMMARY
           fi
 
-          printf '%b\n' "# build_new_release?" >> $GITHUB_STEP_SUMMARY
-          printf '%b\n' "\`\`\`bash\nbuild_new_release=${build_new_release}\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "# Build new release?" >> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "build_new_release=${build_new_release}" | sed 's/\x1b\[[0-9;]*m//g' | { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
 
       # This step only runs of if steps.boot_strap_release.outputs.build_new_release == 'true'
       # This will only be set if the versions.json value from the latest release is different to the remote version. Not the local version.mak
