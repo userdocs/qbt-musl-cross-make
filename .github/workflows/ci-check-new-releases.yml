@@ -48,9 +48,6 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
-      - name: Install dependencies
-        run: sudo apt-get install -y ssed
-
       - name: boot strap
         id: boot_strap_release
         run: |
@@ -59,7 +56,7 @@ jobs:
           # Fast connectivity check with short timeout
           if curl -sLIo /dev/null --fail --connect-timeout 5 --max-time 10 "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD"; then
             # Use git ls-remote with timeout
-            if config_sub_upstream="$(timeout 30 git ls-remote "https://git.savannah.gnu.org/git/config.git" | awk 'NR==1 {print substr($1,1,12); exit}')"; then
+            if config_sub_upstream="$(timeout 30 git ls-remote "https://git.savannah.gnu.org/git/config.git" | { read line; printf '%s' "${line:0:12}"; })"; then
               printf '%s\n' "savannah.gnu.org is reachable, using git to get config.sub commit hash of remote version"
               printf '%b\n\n' "> [!NOTE]\n> \`config_mak_upstream_test:\` \`passed\` \n> config.sub commit hash retrieved via git-ls-remote" | tee -a $GITHUB_STEP_SUMMARY
             else
@@ -111,12 +108,12 @@ jobs:
           upstream_versions[CONFIG_SUB_REV]="${config_sub_upstream}"
           upstream_versions[GCC_VER]="${gcc_version}"
           upstream_versions[BINUTILS_VER]="${binutils_version}"
-          upstream_versions[MUSL_VER]="$(git ls-remote "git://git.musl-libc.org/musl" | awk 'NR==1 {print substr($1,1,12); exit}')"
-          upstream_versions[GMP_VER]="$(curl -sL "${gnu_mirror_url}/gmp/" | ssed -Rn 's|(.*)href="gmp-(.+?)\.tar\.xz"(.*)|\2|p' | sort -rV | awk 'NR==1 {print; exit}')"
-          upstream_versions[MPC_VER]="$(curl -sL "${gnu_mirror_url}/mpc/" | ssed -Rn 's|(.*)href="mpc-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | awk 'NR==1 {print; exit}')"
-          upstream_versions[MPFR_VER]="$(curl -sL "${gnu_mirror_url}/mpfr/" | ssed -Rn 's|(.*)href="mpfr-(.+?)\.tar\.gz"(.*)|\2|p' | sort -rV | awk 'NR==1 {print; exit}')"
-          upstream_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | ssed -Rn 's|(.*)href="linux-(.+?)\.tar\.gz"(.*)|\2|p' |sort -rV | awk 'NR==1 {print; exit}')"
-          upstream_versions[ISL_VER]="$(curl -sL https://sourceforge.net/projects/libisl/files | ssed -Rn 's|(.*)href="(.*)isl-(.+?)\.tar\.xz/download"(.*)|\3|p' | sort -rV | awk 'NR==1 {print; exit}')"
+          upstream_versions[MUSL_VER]="$(git ls-remote "git://git.musl-libc.org/musl" | { read line; printf '%s' "${line:0:12}"; })"
+          upstream_versions[GMP_VER]="$(curl -sL "${gnu_mirror_url}/gmp/" | sed -En 's|.*href="gmp-([^"]*).tar.xz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[MPC_VER]="$(curl -sL "${gnu_mirror_url}/mpc/" | sed -En 's|.*href="mpc-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[MPFR_VER]="$(curl -sL "${gnu_mirror_url}/mpfr/" | sed -En 's|.*href="mpfr-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | sed -En 's|.*href="linux-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[ISL_VER]="$(curl -sL https://sourceforge.net/projects/libisl/files | sed -En 's|.*href=".*isl-([^"]*).tar.xz/download".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
 
           # Verify the array entries and exit on failure
           for key in "${!upstream_versions[@]}"; do
