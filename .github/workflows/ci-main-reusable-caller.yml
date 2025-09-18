@@ -125,7 +125,7 @@ jobs:
       bypass_update_check: ${{ github.event.inputs.bypass_update_check || 'false' }}
       bypass_git_commit: ${{ github.event.inputs.bypass_git_commit || 'false' }}
       skip_rerun: ${{ github.event.inputs.skip_rerun || 'false' }}
-      retries: ${{ github.event.inputs.retries || '3' }}
+      retries: ${{ github.event.inputs.retries || '1' }}
 
     steps:
       - name: Setting Outputs from inputs
