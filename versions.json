@@ -2,7 +2,7 @@
   "CONFIG_SUB_REV": "a2287c3041a3",
   "GCC_VER": "15.2.0",
   "BINUTILS_VER": "2.45",
-  "MUSL_VER": "0ccaf0572e9c",
+  "MUSL_VER": "1b76ff0767d0",
   "GMP_VER": "6.3.0",
   "MPC_VER": "1.3.1",
   "MPFR_VER": "4.2.2",
