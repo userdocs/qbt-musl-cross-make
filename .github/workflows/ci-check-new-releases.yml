@@ -109,11 +109,11 @@ jobs:
           upstream_versions[GCC_VER]="${gcc_version}"
           upstream_versions[BINUTILS_VER]="${binutils_version}"
           upstream_versions[MUSL_VER]="$(git ls-remote "git://git.musl-libc.org/musl" | { read line; printf '%s' "${line:0:12}"; })"
-          upstream_versions[GMP_VER]="$(curl -sL "${gnu_mirror_url}/gmp/" | sed -En 's|.*href="gmp-([^"]*).tar.xz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
-          upstream_versions[MPC_VER]="$(curl -sL "${gnu_mirror_url}/mpc/" | sed -En 's|.*href="mpc-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
-          upstream_versions[MPFR_VER]="$(curl -sL "${gnu_mirror_url}/mpfr/" | sed -En 's|.*href="mpfr-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
-          upstream_versions[LINUX_VER]="$(curl -sL "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | sed -En 's|.*href="linux-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
-          upstream_versions[ISL_VER]="$(curl -sL https://sourceforge.net/projects/libisl/files | sed -En 's|.*href=".*isl-([^"]*).tar.xz/download".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[GMP_VER]="$(curl -L "${gnu_mirror_url}/gmp/" | sed -En 's|.*href="gmp-([^"]*).tar.xz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[MPC_VER]="$(curl -L "${gnu_mirror_url}/mpc/" | sed -En 's|.*href="mpc-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[MPFR_VER]="$(curl -L "${gnu_mirror_url}/mpfr/" | sed -En 's|.*href="mpfr-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[LINUX_VER]="$(curl -L "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | sed -En 's|.*href="linux-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[ISL_VER]="$(curl -L https://sourceforge.net/projects/libisl/files | sed -En 's|.*href=".*isl-([^"]*).tar.xz/download".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
 
           # Verify the array entries and exit on failure
           for key in "${!upstream_versions[@]}"; do
