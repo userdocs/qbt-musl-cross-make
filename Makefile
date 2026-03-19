@@ -24,7 +24,7 @@ SRC_DIRS = gcc-$(GCC_VER) binutils-$(BINUTILS_VER) musl-$(MUSL_VER) \
 all:
 
 clean:
-	rm -rf gcc-* binutils-* musl-* gmp-* mpc-* mpfr-* isl-* build build-* linux-*
+	rm -rf gcc-* binutils-* musl-* gmp-* mpc-* mpfr-* isl-* build build-* linux-* mold_src
 
 distclean: clean
 	rm -rf sources
@@ -133,6 +133,16 @@ $(foreach dir,$(notdir $(basename $(basename $(basename $(wildcard hashes/*)))))
 extract_all: | $(SRC_DIRS)
 
 
+# Rules for cloning mold source when MOLD_VER is set
+
+ifneq ($(MOLD_VER),)
+mold_src:
+	rm -rf $@.tmp
+	git clone --depth 1 --branch v$(MOLD_VER) $(MOLD_REPO) $@.tmp
+	mv $@.tmp $@
+endif
+
+
 # Rules for building.
 
 ifeq ($(TARGET),)
@@ -161,12 +171,15 @@ $(BUILD_DIR)/config.mak: | $(BUILD_DIR)
 	$(if $(MPFR_VER),"MPFR_SRCDIR = $(REL_TOP)/mpfr-$(MPFR_VER)") \
 	$(if $(ISL_VER),"ISL_SRCDIR = $(REL_TOP)/isl-$(ISL_VER)") \
 	$(if $(LINUX_VER),"LINUX_SRCDIR = $(REL_TOP)/linux-$(LINUX_VER)") \
+	$(if $(MOLD_VER),"MOLD_SRCDIR = $(REL_TOP)/mold_src") \
 	"-include $(REL_TOP)/config.mak"
 
-all: | $(SRC_DIRS) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.mak
+MOLD_DEP = $(if $(MOLD_VER),mold_src)
+
+all: | $(SRC_DIRS) $(MOLD_DEP) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.mak
 	cd $(BUILD_DIR) && $(MAKE) $@
 
-install: | $(SRC_DIRS) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.mak
+install: | $(SRC_DIRS) $(MOLD_DEP) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.mak
 	cd $(BUILD_DIR) && $(MAKE) OUTPUT=$(OUTPUT) $@
 
 endif

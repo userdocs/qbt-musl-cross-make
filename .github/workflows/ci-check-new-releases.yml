@@ -100,6 +100,7 @@ jobs:
             current_release_versions[MPFR_VER]="0"
             current_release_versions[LINUX_VER]="0"
             current_release_versions[ISL_VER]="0"
+            current_release_versions[MOLD_VER]="0"
           fi
 
           ################# versions.json stuff ######################
@@ -115,6 +116,7 @@ jobs:
           upstream_versions[MPFR_VER]="$(curl -L "${gnu_mirror_url}/mpfr/" | sed -En 's|.*href="mpfr-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
           upstream_versions[LINUX_VER]="$(curl -L "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | sed -En 's|.*href="linux-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
           upstream_versions[ISL_VER]="$(curl -L https://sourceforge.net/projects/libisl/files | sed -En 's|.*href=".*isl-([^"]*).tar.xz/download".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[MOLD_VER]="$(git ls-remote -t "https://github.com/rui314/mold.git" | sed -En 's|.*refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
 
           # Verify the array entries and exit on failure
           for key in "${!upstream_versions[@]}"; do
@@ -172,6 +174,9 @@ jobs:
 
               if [[ "$iray" == "CONFIG_SUB_REV" ]]; then
                 printf '%s' "$(curl -sL "${upstream_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "hashes/config.sub.${upstream_versions[CONFIG_SUB_REV]}.sha1"
+              elif [[ "$iray" == "MOLD_VER" ]]; then
+                # Mold is git-cloned, no tarball hash or patches needed
+                :
               else
                 # get updated shasum of $iray
                 curl -sL "${upstream_urls_dl[$iray]}" -o "${upstream_urls_dl[$iray]##*/}"
@@ -237,7 +242,8 @@ jobs:
             "MPC_VER": "${upstream_versions[MPC_VER]}",
             "MPFR_VER": "${upstream_versions[MPFR_VER]}",
             "LINUX_VER": "${upstream_versions[LINUX_VER]}",
-            "ISL_VER": "${upstream_versions[ISL_VER]}"
+            "ISL_VER": "${upstream_versions[ISL_VER]}",
+            "MOLD_VER": "${upstream_versions[MOLD_VER]}"
           }
           VERSIONS_JSON
 
@@ -261,6 +267,8 @@ jobs:
           MPFR_VER = ${upstream_versions[MPFR_VER]}
           LINUX_VER = ${upstream_versions[LINUX_VER]}
           ISL_VER = ${upstream_versions[ISL_VER]}
+          # MOLD_VER = version tag (e.g. 2.40.4 clones tag v2.40.4). Leave empty to skip mold.
+          MOLD_VER = ${upstream_versions[MOLD_VER]}
           VERSIONS_MAK
 
           printf '%b\n\n' "# updated versions.mak" >> $GITHUB_STEP_SUMMARY

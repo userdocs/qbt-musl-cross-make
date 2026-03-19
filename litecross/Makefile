@@ -4,6 +4,7 @@ OUTPUT = $(CURDIR)/output
 BINUTILS_SRCDIR = BINUTILS_SRCDIR_not_set
 GCC_SRCDIR = GCC_SRCDIR_not_set
 MUSL_SRCDIR = MUSL_SRCDIR_not_set
+MOLD_SRCDIR = MOLD_SRCDIR_not_set
 
 COMMON_CONFIG =
 BINUTILS_CONFIG =
@@ -207,6 +208,40 @@ install-binutils: | obj_binutils/.lc_built
 install-gcc: | obj_gcc/.lc_built
 	cd obj_gcc && $(MAKE) MAKE="$(MAKE) $(LIBTOOL_ARG)" DESTDIR=$(DESTDIR)$(OUTPUT) install
 	ln -sf $(TARGET)-gcc $(DESTDIR)$(OUTPUT)/bin/$(TARGET)-cc
+
+# Mold linker - conditionally built when MOLD_SRCDIR is provided
+ifneq ($(MOLD_SRCDIR),MOLD_SRCDIR_not_set)
+
+all: mold
+install: install-mold
+
+mold: obj_mold/.lc_built
+
+.PHONY: mold install-mold
+
+mold_src: | $(MOLD_SRCDIR)
+	ln -sf $(MOLD_SRCDIR) $@
+
+obj_mold/.lc_configured: | obj_mold mold_src
+	cmake -B obj_mold -S mold_src \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX= \
+		-DCMAKE_C_FLAGS="$(OPTIMIZATION_FLAGS) $(SECURITY_FLAGS)" \
+		-DCMAKE_CXX_FLAGS="$(OPTIMIZATION_FLAGS) $(SECURITY_FLAGS) $(WARNING_FLAGS)" \
+		-DCMAKE_EXE_LINKER_FLAGS="$(LINKER_FLAGS)" \
+		-DMI_BUILD_SHARED=OFF \
+		-DMOLD_MOSTLY_STATIC=ON
+	touch $@
+
+obj_mold/.lc_built: | obj_mold/.lc_configured
+	cmake --build obj_mold -j$$(nproc)
+	touch $@
+
+install-mold: | obj_mold/.lc_built
+	cmake --install obj_mold --prefix $(DESTDIR)$(OUTPUT)
+	ln -sf mold $(DESTDIR)$(OUTPUT)/bin/$(TARGET)-ld.mold
+
+endif
 
 ifneq ($(LINUX_SRCDIR),)
 TARGET_ARCH = $(firstword $(subst -, ,$(TARGET)))

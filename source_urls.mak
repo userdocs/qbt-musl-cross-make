@@ -13,3 +13,5 @@ MUSL_SNAPSHOT = https://git.musl-libc.org/cgit/musl/snapshot
 MUSL_REPO = https://git.musl-libc.org/git/musl
 LINUX_SITE = https://cdn.kernel.org/pub/linux/kernel
 CONFIG_SUB_URL = https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=$(CONFIG_SUB_REV)
+
+MOLD_REPO = https://github.com/rui314/mold.git
