@@ -23,7 +23,8 @@ jobs:
       GHCR_REPO: ghcr.io/${{ github.repository }}
       DOCKERHUB_REPO: ${{ github.repository }}
       DOCKER_BUILD_SUMMARY: "false"
-      arch_type: ${{ matrix.arch_type }}
+      arch_type: ${{ matrix.arch_type.name }}
+      qbt_cross_name: ${{ matrix.arch_type.qbt_cross_name }}
       docker_build_platforms: ${{ inputs.docker_build_platforms }}
 
     steps:

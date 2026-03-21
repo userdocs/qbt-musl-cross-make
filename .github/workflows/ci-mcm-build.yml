@@ -14,15 +14,15 @@ on:
 
 jobs:
   mcm-build:
-    name: ${{ matrix.triple_prefix }}-${{ matrix.arch_type }}
-    runs-on: ${{ matrix.build_host }}
+    name: ${{ matrix.build_host.triple_prefix }}-${{ matrix.arch_type.name }}
+    runs-on: ${{ matrix.build_host.name }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(inputs.mcm_build_matrix) }}
     env:
-      matrix_arch_type: ${{ matrix.arch_type }}
-      matrix_arch_config: ${{ matrix.arch_config }}
-      matrix_triple_prefix: ${{ matrix.triple_prefix }}
+      matrix_arch_type: ${{ matrix.arch_type.name }}
+      matrix_arch_config: ${{ matrix.arch_type.arch_config }}
+      matrix_triple_prefix: ${{ matrix.build_host.triple_prefix }}
       container_name: "cross_builder"
 
     steps:
@@ -45,7 +45,7 @@ jobs:
           custom_docker_commands: |
             -e GNU_MIRROR_URL=${{ inputs.gnu_mirror_url }}
 
-      - name: Host - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
+      - name: Host - Set ${{ matrix.arch_type.name }} musl to ${{ matrix.arch_type.arch_config }}
         run: sed "s|GCC_CONFIG_FOR_TARGET +=|GCC_CONFIG_FOR_TARGET += ${matrix_arch_config}|" -i config.mak
 
       - name: Host - Show updated config.mak
@@ -77,12 +77,12 @@ jobs:
       - name: Docker - scripts +x
         run: docker exec ${container_name} chmod +x cowpatch.sh builder-helper.bash
 
-      - name: Docker - install ${{ matrix.arch_type }} toolchain
+      - name: Docker - install ${{ matrix.arch_type.name }} toolchain
         run: >
           docker exec "${container_name}"
           make -j"$(nproc)" install TARGET="${matrix_arch_type}" OUTPUT="${wd}/build/${matrix_arch_type}"
 
-      - name: Host - archive ${{ matrix.arch_type }} toolchain
+      - name: Host - archive ${{ matrix.arch_type.name }} toolchain
         run: |
           cd "$(pwd)/build"
           XZ_OPT=-9T0 tar -cvJf ${matrix_triple_prefix}-${matrix_arch_type}.tar.xz ${matrix_arch_type}/
@@ -90,10 +90,10 @@ jobs:
       - name: Host - Generate artifact attestation
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
-          subject-path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
+          subject-path: "build/${{ matrix.build_host.triple_prefix }}-${{ matrix.arch_type.name }}.tar.xz"
 
       - name: Host - Docker - upload artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: "${{ matrix.triple_prefix }}-${{ matrix.arch_type }}-toolchain"
-          path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
+          name: "${{ matrix.build_host.triple_prefix }}-${{ matrix.arch_type.name }}-toolchain"
+          path: "build/${{ matrix.build_host.triple_prefix }}-${{ matrix.arch_type.name }}.tar.xz"

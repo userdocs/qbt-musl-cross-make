@@ -1,97 +1,93 @@
 {
   "build_host": [
-    "ubuntu-24.04",
-    "ubuntu-24.04-arm"
-  ],
-  "arch_type": [
-    "aarch64-linux-musl",
-    "arm-linux-musleabi",
-    "arm-linux-musleabihf",
-    "armv6-linux-musleabihf",
-    "armv7l-linux-musleabihf",
-    "i686-linux-musl",
-    "x86_64-linux-musl",
-    "mips-linux-musl",
-    "mipsel-linux-musl",
-    "mips64-linux-musl",
-    "mips64el-linux-musl",
-    "powerpc-linux-musl",
-    "powerpc64le-linux-musl",
-    "s390x-linux-musl",
-    "riscv64-linux-musl",
-    "loongarch64-linux-musl"
-  ],
-  "include": [
     {
-      "build_host": "ubuntu-24.04",
+      "name": "ubuntu-24.04",
       "triple_prefix": "x86_64"
     },
     {
-      "build_host": "ubuntu-24.04-arm",
+      "name": "ubuntu-24.04-arm",
       "triple_prefix": "aarch64"
-    },
+    }
+  ],
+  "arch_type": [
     {
-      "arch_type": "aarch64-linux-musl",
+      "name": "aarch64-linux-musl",
+      "qbt_cross_name": "aarch64",
       "arch_config": "--with-arch=armv8-a --with-abi=lp64"
     },
     {
-      "arch_type": "arm-linux-musleabi",
+      "name": "arm-linux-musleabi",
+      "qbt_cross_name": "armel",
       "arch_config": "--with-arch=armv5te --with-tune=arm926ej-s --with-float=soft --with-abi=aapcs-linux"
     },
     {
-      "arch_type": "arm-linux-musleabihf",
+      "name": "arm-linux-musleabihf",
+      "qbt_cross_name": "armhf",
       "arch_config": "--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
     },
     {
-      "arch_type": "armv6-linux-musleabihf",
+      "name": "armv6-linux-musleabihf",
+      "qbt_cross_name": "armhf",
       "arch_config": "--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
     },
     {
-      "arch_type": "armv7l-linux-musleabihf",
+      "name": "armv7l-linux-musleabihf",
+      "qbt_cross_name": "armv7",
       "arch_config": "--with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb"
     },
     {
-      "arch_type": "i686-linux-musl",
+      "name": "i686-linux-musl",
+      "qbt_cross_name": "x86",
       "arch_config": "--with-arch=pentium-m --with-fpmath=sse --with-tune=generic --enable-cld"
     },
     {
-      "arch_type": "x86_64-linux-musl",
+      "name": "x86_64-linux-musl",
+      "qbt_cross_name": "x86_64",
       "arch_config": "--with-arch=x86-64 --with-tune=generic"
     },
     {
-      "arch_type": "mips-linux-musl",
+      "name": "mips-linux-musl",
+      "qbt_cross_name": "mips",
       "arch_config": "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
     },
     {
-      "arch_type": "mipsel-linux-musl",
+      "name": "mipsel-linux-musl",
+      "qbt_cross_name": "mipsel",
       "arch_config": "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
     },
     {
-      "arch_type": "mips64-linux-musl",
+      "name": "mips64-linux-musl",
+      "qbt_cross_name": "mips64",
       "arch_config": "--with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64"
     },
     {
-      "arch_type": "mips64el-linux-musl",
+      "name": "mips64el-linux-musl",
+      "qbt_cross_name": "mips64el",
       "arch_config": "--with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64"
     },
     {
-      "arch_type": "powerpc-linux-musl",
+      "name": "powerpc-linux-musl",
+      "qbt_cross_name": "powerpc",
       "arch_config": "--enable-secureplt --enable-decimal-float=no"
     },
     {
-      "arch_type": "powerpc64le-linux-musl",
+      "name": "powerpc64le-linux-musl",
+      "qbt_cross_name": "ppc64el",
       "arch_config": "--with-abi=elfv2 --enable-secureplt --enable-decimal-float=no --enable-targets=powerpcle-linux"
     },
     {
-      "arch_type": "s390x-linux-musl",
+      "name": "s390x-linux-musl",
+      "qbt_cross_name": "s390x",
       "arch_config": "--with-arch=z196 --with-tune=zEC12 --with-zarch --with-long-double-128 --enable-decimal-float"
     },
     {
-      "arch_type": "riscv64-linux-musl",
+      "name": "riscv64-linux-musl",
+      "qbt_cross_name": "riscv64",
       "arch_config": "--with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic"
     },
     {
-      "arch_type": "loongarch64-linux-musl",
+      "name": "loongarch64-linux-musl",
+      "qbt_cross_name": "loongarch64",
       "arch_config": "--with-arch=la64v1.0 --with-abi=lp64d"
     }
   ]

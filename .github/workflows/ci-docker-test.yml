@@ -36,9 +36,9 @@ jobs:
     permissions:
       contents: read
     env:
-      arch_type: ${{ matrix.arch_type }}
+      arch_type: ${{ matrix.arch_type.name }}
       docker_build_platforms: ${{ inputs.docker_build_matrix }}
-    runs-on: ${{ matrix.build_host }}
+    runs-on: ${{ matrix.build_host.name }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(inputs.docker_test_matrix || needs.bootstrap-matrix.outputs.docker_test_matrix) }}
@@ -47,7 +47,7 @@ jobs:
       - name: Host - Bootstrap qemu
         uses: userdocs/actions/qemu@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
         with:
-          target_arch: ${{ matrix.arch_type }}
+          target_arch: ${{ matrix.arch_type.name }}
 
       - name: bootstrap
         run: >

@@ -247,10 +247,10 @@ jobs:
           fi
 
           if [[ -n $build_host_exclude ]]; then
-            printf '%s\n' "mcm_build_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]], include: [.include[] | select((.build_host != $build_host_exclude) or (.arch_type and .arch_config))]}' triples.json)" >> $GITHUB_OUTPUT
-            printf '\n%b\n' "# mcm_build_matrix\n\n\`\`\`json\n$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]], include: [.include[] | select((.build_host != $build_host_exclude) or (.arch_type and .arch_config))]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
-            printf '%s\n' "docker_test_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
-            printf '\n%b\n' "# docker_test_matrix\n\n\`\`\`json\n$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' "mcm_build_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(.name != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# mcm_build_matrix\n\n\`\`\`json\n$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(.name != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' "docker_test_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(.name != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# docker_test_matrix\n\n\`\`\`json\n$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(.name != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
 
   ci-bootstrap-build-deps:
@@ -369,6 +369,7 @@ jobs:
     permissions:
       actions: write
     runs-on: ubuntu-24.04-arm
+    environment: production
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
       github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
