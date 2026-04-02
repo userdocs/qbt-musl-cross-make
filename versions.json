@@ -6,7 +6,7 @@
   "GMP_VER": "6.3.0",
   "MPC_VER": "1.3.1",
   "MPFR_VER": "4.2.2",
-  "LINUX_VER": "6.19.10",
+  "LINUX_VER": "6.19.11",
   "ISL_VER": "0.27",
   "MOLD_VER": "2.40.4"
 }
