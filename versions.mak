@@ -15,4 +15,4 @@ MPFR_VER = 4.2.2
 LINUX_VER = 6.19.12
 ISL_VER = 0.27
 # MOLD_VER = version tag (e.g. 2.40.4 clones tag v2.40.4). Leave empty to skip mold.
-MOLD_VER = 2.40.4
+MOLD_VER = 2.41.0
