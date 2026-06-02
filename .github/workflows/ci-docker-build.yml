@@ -68,3 +68,5 @@ jobs:
             ARCH=${{ env.arch_type }}
             BASE_URL=https://github.com/${{ github.repository }}/releases/latest/download
             QBT_CROSS_NAME=${{ env.qbt_cross_name }}
+            GH_REPO=${{ github.repository }}
+            GH_REPO_NAME=${{ github.event.repository.name }}

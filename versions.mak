@@ -16,3 +16,4 @@ LINUX_VER = 6.19.14
 ISL_VER = 0.27
 # MOLD_VER = version tag (e.g. 2.40.4 clones tag v2.40.4). Leave empty to skip mold.
 MOLD_VER = 2.41.0
+ZLIB_VER = 1.3.2

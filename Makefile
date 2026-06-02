@@ -19,7 +19,9 @@ SRC_DIRS = gcc-$(GCC_VER) binutils-$(BINUTILS_VER) musl-$(MUSL_VER) \
 	$(if $(MPC_VER),mpc-$(MPC_VER)) \
 	$(if $(MPFR_VER),mpfr-$(MPFR_VER)) \
 	$(if $(ISL_VER),isl-$(ISL_VER)) \
-	$(if $(LINUX_VER),linux-$(LINUX_VER))
+	$(if $(LINUX_VER),linux-$(LINUX_VER)) \
+	$(if $(ZLIB_VER),zlib-$(ZLIB_VER)) \
+	$(if $(MOLD_VER),mold-$(MOLD_VER))
 
 all:
 
@@ -52,6 +54,7 @@ $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-4*)): SITE = $(LIN
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-3*)): SITE = $(LINUX_SITE)/v3.x
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-2.6*)): SITE = $(LINUX_SITE)/v2.6
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-headers-*)): SITE = $(LINUX_HEADERS_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/zlib*)): SITE = $(ZLIB_SITE)
 
 $(SOURCES):
 	mkdir -p $@
@@ -67,6 +70,14 @@ $(SOURCES)/config.sub: | $(SOURCES)
 $(SOURCES)/%: hashes/%.sha1 | $(SOURCES)
 	mkdir -p $@.tmp
 	cd $@.tmp && $(DL_CMD) $(notdir $@) $(SITE)/$(notdir $@)
+	cd $@.tmp && touch $(notdir $@)
+	cd $@.tmp && $(SHA1_CMD) $(CURDIR)/hashes/$(notdir $@).sha1
+	mv $@.tmp/$(notdir $@) $@
+	rm -rf $@.tmp
+
+$(SOURCES)/mold-%.tar.gz: hashes/mold-%.tar.gz.sha1 | $(SOURCES)
+	mkdir -p $@.tmp
+	cd $@.tmp && $(DL_CMD) $(notdir $@) $(MOLD_SITE)/v$*.tar.gz
 	cd $@.tmp && touch $(notdir $@)
 	cd $@.tmp && $(SHA1_CMD) $(CURDIR)/hashes/$(notdir $@).sha1
 	mv $@.tmp/$(notdir $@) $@
@@ -133,15 +144,6 @@ $(foreach dir,$(notdir $(basename $(basename $(basename $(wildcard hashes/*)))))
 extract_all: | $(SRC_DIRS)
 
 
-# Rules for cloning mold source when MOLD_VER is set
-
-ifneq ($(MOLD_VER),)
-mold_src:
-	rm -rf $@.tmp
-	git clone --depth 1 --branch v$(MOLD_VER) $(MOLD_REPO) $@.tmp
-	mv $@.tmp $@
-endif
-
 
 # Rules for building.
 
@@ -171,15 +173,14 @@ $(BUILD_DIR)/config.mak: | $(BUILD_DIR)
 	$(if $(MPFR_VER),"MPFR_SRCDIR = $(REL_TOP)/mpfr-$(MPFR_VER)") \
 	$(if $(ISL_VER),"ISL_SRCDIR = $(REL_TOP)/isl-$(ISL_VER)") \
 	$(if $(LINUX_VER),"LINUX_SRCDIR = $(REL_TOP)/linux-$(LINUX_VER)") \
-	$(if $(MOLD_VER),"MOLD_SRCDIR = $(REL_TOP)/mold_src") \
+	$(if $(ZLIB_VER),"ZLIB_SRCDIR = $(REL_TOP)/zlib-$(ZLIB_VER)") \
+	$(if $(MOLD_VER),"MOLD_SRCDIR = $(REL_TOP)/mold-$(MOLD_VER)") \
 	"-include $(REL_TOP)/config.mak"
 
-MOLD_DEP = $(if $(MOLD_VER),mold_src)
-
-all: | $(SRC_DIRS) $(MOLD_DEP) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.mak
+all: | $(SRC_DIRS) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.mak
 	cd $(BUILD_DIR) && $(MAKE) $@
 
-install: | $(SRC_DIRS) $(MOLD_DEP) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.mak
+install: | $(SRC_DIRS) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.mak
 	cd $(BUILD_DIR) && $(MAKE) OUTPUT=$(OUTPUT) $@
 
 endif

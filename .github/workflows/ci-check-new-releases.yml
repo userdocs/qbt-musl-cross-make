@@ -38,6 +38,7 @@ jobs:
       github_repository: ${{ github.repository }}
       github_workspace: ${{ github.workspace }}
       config_mak_upstream_test: ""
+      default_branch: ${{ github.event.repository.default_branch }}
     defaults:
       run:
         shell: bash
@@ -54,15 +55,13 @@ jobs:
           set -x
           ################# config.mak stuff ######################
 
-          # Fast connectivity check with short timeout
-          if curl -sLIo /dev/null --fail --connect-timeout 5 --max-time 10 "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD"; then
-            # Use git ls-remote with timeout
-            if config_sub_upstream="$(timeout 30 git ls-remote "https://git.savannah.gnu.org/git/config.git" | { read line; printf '%s' "${line:0:12}"; })"; then
-              printf '%s\n' "savannah.gnu.org is reachable, using git to get config.sub commit hash of remote version"
-              printf '%b\n\n' "> [!NOTE]\n> \`config_mak_upstream_test:\` \`passed\` \n> config.sub commit hash retrieved via git-ls-remote" | tee -a $GITHUB_STEP_SUMMARY
-            else
-              config_mak_upstream_test="failed"
-            fi
+          # Try GitHub mirror first (always reachable from CI), fallback to savannah
+          if config_sub_upstream="$(git ls-remote "https://github.com/userdocs/config.sub" refs/heads/master 2>/dev/null | { read -r line; printf '%s' "${line:0:12}"; })"; [[ -n "${config_sub_upstream}" ]]; then
+            printf '%s\n' "Got config.sub commit hash via GitHub mirror"
+            printf '%b\n\n' "> [!NOTE]\n> \`config_mak_upstream_test:\` \`passed\` \n> config.sub commit hash retrieved via GitHub mirror" | tee -a $GITHUB_STEP_SUMMARY
+          elif config_sub_upstream="$(timeout 30 git ls-remote "https://git.savannah.gnu.org/git/config.git" 2>/dev/null | { read -r line; printf '%s' "${line:0:12}"; })"; [[ -n "${config_sub_upstream}" ]]; then
+            printf '%s\n' "Got config.sub commit hash via savannah git ls-remote"
+            printf '%b\n\n' "> [!NOTE]\n> \`config_mak_upstream_test:\` \`passed\` \n> config.sub commit hash retrieved via savannah git-ls-remote" | tee -a $GITHUB_STEP_SUMMARY
           else
             config_mak_upstream_test="failed"
           fi
@@ -101,6 +100,7 @@ jobs:
             current_release_versions[LINUX_VER]="0"
             current_release_versions[ISL_VER]="0"
             current_release_versions[MOLD_VER]="0"
+            current_release_versions[ZLIB_VER]="0"
           fi
 
           ################# versions.json stuff ######################
@@ -117,6 +117,7 @@ jobs:
           upstream_versions[LINUX_VER]="$(curl -L "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | sed -En 's|.*href="linux-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
           upstream_versions[ISL_VER]="$(curl -L https://sourceforge.net/projects/libisl/files | sed -En 's|.*href=".*isl-([^"]*).tar.xz/download".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
           upstream_versions[MOLD_VER]="$(git ls-remote -t "https://github.com/rui314/mold.git" | sed -En 's|.*refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[ZLIB_VER]="$(git ls-remote -t "https://github.com/madler/zlib" | sed -En 's|.*refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
 
           # Verify the array entries and exit on failure
           for key in "${!upstream_versions[@]}"; do
@@ -136,6 +137,9 @@ jobs:
           upstream_urls_dl[MPFR_VER]="${gnu_mirror_url}/mpfr/mpfr-${upstream_versions[MPFR_VER]}.tar.xz"
           upstream_urls_dl[LINUX_VER]="https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/linux-${upstream_versions[LINUX_VER]}.tar.xz"
           upstream_urls_dl[ISL_VER]="https://libisl.sourceforge.io/isl-${upstream_versions[ISL_VER]}.tar.xz"
+
+          upstream_urls_dl[MOLD_VER]="https://github.com/rui314/mold/archive/refs/tags/v${upstream_versions[MOLD_VER]}.tar.gz"
+          upstream_urls_dl[ZLIB_VER]="https://github.com/madler/zlib/releases/download/v${upstream_versions[ZLIB_VER]}/zlib-${upstream_versions[ZLIB_VER]}.tar.gz"
 
           ver() {
               local input="$1"
@@ -175,8 +179,9 @@ jobs:
               if [[ "$iray" == "CONFIG_SUB_REV" ]]; then
                 printf '%s' "$(curl -sL "${upstream_urls_dl[$iray]}" | sha1sum | sed 's/-/config.sub/')" > "hashes/config.sub.${upstream_versions[CONFIG_SUB_REV]}.sha1"
               elif [[ "$iray" == "MOLD_VER" ]]; then
-                # Mold is git-cloned, no tarball hash or patches needed
-                :
+                curl -sL "${upstream_urls_dl[$iray]}" -o "mold-${upstream_versions[MOLD_VER]}.tar.gz"
+                sha1sum "mold-${upstream_versions[MOLD_VER]}.tar.gz" > "hashes/mold-${upstream_versions[MOLD_VER]}.tar.gz.sha1"
+                rm -f "mold-${upstream_versions[MOLD_VER]}.tar.gz"
               else
                 # get updated shasum of $iray
                 curl -sL "${upstream_urls_dl[$iray]}" -o "${upstream_urls_dl[$iray]##*/}"
@@ -243,7 +248,8 @@ jobs:
             "MPFR_VER": "${upstream_versions[MPFR_VER]}",
             "LINUX_VER": "${upstream_versions[LINUX_VER]}",
             "ISL_VER": "${upstream_versions[ISL_VER]}",
-            "MOLD_VER": "${upstream_versions[MOLD_VER]}"
+            "MOLD_VER": "${upstream_versions[MOLD_VER]}",
+            "ZLIB_VER": "${upstream_versions[ZLIB_VER]}"
           }
           VERSIONS_JSON
 
@@ -269,6 +275,7 @@ jobs:
           ISL_VER = ${upstream_versions[ISL_VER]}
           # MOLD_VER = version tag (e.g. 2.40.4 clones tag v2.40.4). Leave empty to skip mold.
           MOLD_VER = ${upstream_versions[MOLD_VER]}
+          ZLIB_VER = ${upstream_versions[ZLIB_VER]}
           VERSIONS_MAK
 
           printf '%b\n\n' "# updated versions.mak" >> $GITHUB_STEP_SUMMARY
@@ -306,6 +313,6 @@ jobs:
             git add versions.json versions.mak hashes/*.sha1 patches/* sources/config.sub || true
             git status --porcelain | grep -q . && {
             git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' commit -m "Automated commit by GitHub Actions"
-            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${default_branch}
             } || printf '%s\n' "No changes detected"
           fi

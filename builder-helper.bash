@@ -80,7 +80,7 @@ printf '%b\n\n' " sed -i \"s|^GCC_CONFIG_FOR_TARGET +=.*|GCC_CONFIG_FOR_TARGET +
 printf '%b\n\n' " docker run --platform=linux/${docker_platform} -w /root -v $(pwd):/root alpine:edge"
 printf '%b\n' " apk add -u --no-cache autoconf automake bash bison build-base \ "
 printf '%b\n' " curl findutils flex git libarchive-tools libtool linux-headers \ "
-printf '%b\n\n' " musl-dev patch perl pkgconf rsync tar texinfo xz zip zlib-dev zlib-static"
+printf '%b\n\n' " musl-dev patch perl pkgconf rsync tar texinfo xz zip zlib-dev"
 printf '%b\n\n' " make -j${threads} install TARGET=\"${target}\" OUTPUT=\"build/${target}\" | tee ${target}-build.log"
 printf '%b\n' " cd \"build\""
 printf '%b\n\n' " XZ_OPT=-9T0 tar -cvJf ${target}.tar.xz ${target}/"
@@ -94,7 +94,7 @@ if [[ "${2}" == "build" ]]; then
         apk update && \
         apk add -u --no-cache autoconf automake bash bison build-base \
             curl findutils flex git libarchive-tools libtool linux-headers \
-            musl-dev patch perl pkgconf rsync tar texinfo xz zip zlib-dev zlib-static && \
+            musl-dev patch perl pkgconf rsync tar texinfo xz zip zlib-dev && \
         git config --global --add safe.directory '*' && \
         make -j${threads} install TARGET=\"${target}\" OUTPUT=\"/root/build/${target}\" | tee ${target}-build.log && \
         cd \"build\" && \

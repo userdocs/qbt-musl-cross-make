@@ -8,6 +8,8 @@
 /build-*/
 /linux-*/
 /isl-*/
+/mold-*/
+/zlib-*/
 /build/
 remote_versions.json
 .claude/settings.local.json

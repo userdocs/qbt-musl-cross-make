@@ -5,6 +5,7 @@ BINUTILS_SRCDIR = BINUTILS_SRCDIR_not_set
 GCC_SRCDIR = GCC_SRCDIR_not_set
 MUSL_SRCDIR = MUSL_SRCDIR_not_set
 MOLD_SRCDIR = MOLD_SRCDIR_not_set
+ZLIB_SRCDIR = ZLIB_SRCDIR_not_set
 
 COMMON_CONFIG =
 BINUTILS_CONFIG =
@@ -240,6 +241,43 @@ obj_mold/.lc_built: | obj_mold/.lc_configured
 install-mold: | obj_mold/.lc_built
 	cmake --install obj_mold --prefix $(DESTDIR)$(OUTPUT)
 	ln -sf mold $(DESTDIR)$(OUTPUT)/bin/$(TARGET)-ld.mold
+
+endif
+
+# Zlib - conditionally built when ZLIB_SRCDIR is provided
+ifneq ($(ZLIB_SRCDIR),ZLIB_SRCDIR_not_set)
+
+obj_binutils/.lc_configured: | obj_zlib/.lc_built
+obj_gcc/.lc_configured: | obj_zlib/.lc_built
+
+all: zlib
+install: install-zlib
+
+zlib: obj_zlib/.lc_built
+
+.PHONY: zlib install-zlib
+
+zlib_src: | $(ZLIB_SRCDIR)
+	ln -sf $(ZLIB_SRCDIR) $@
+
+obj_zlib/.lc_configured: | obj_zlib zlib_src
+	cd obj_zlib && \
+	../zlib_src/configure \
+		--prefix="$(CURDIR)/obj_zlib/staged" \
+		--static
+	touch $@
+
+obj_zlib/.lc_built: | obj_zlib/.lc_configured
+	cd obj_zlib && $(MAKE) install
+	touch $@
+
+install-zlib: | obj_zlib/.lc_built
+
+BINUTILS_CONFIG += --with-system-zlib
+GCC_CONFIG += --with-system-zlib
+
+export LDFLAGS += -L$(CURDIR)/obj_zlib/staged/lib
+export CPPFLAGS += -I$(CURDIR)/obj_zlib/staged/include
 
 endif
 

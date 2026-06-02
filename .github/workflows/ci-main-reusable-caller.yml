@@ -68,12 +68,23 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
-        with:
-          concurrent_skipping: "always"
-          cancel_others: "false"
-          skip_after_successful_duplicate: false
-          do_not_skip: ""
+        env:
+          GH_TOKEN: ${{ github.token }}
+          github_workflow: ${{ github.workflow }}
+          github_ref_name: ${{ github.ref_name }}
+          github_run_id: ${{ github.run_id }}
+        run: |
+          duplicates=$(gh run list --workflow "${github_workflow}" --branch "${github_ref_name}" --limit 100 --json databaseId,status --jq '.[] | select(.status != "completed" and .databaseId < "${github_run_id}") | .databaseId' | tr '\n' ',' | sed 's/,$//')
+
+          if [[ -n "$duplicates" ]]; then
+            printf '%s\n' "should_skip=true" >> "$GITHUB_OUTPUT"
+            printf '\n%b\n' "### :black_square_button: Skip Duplicate Job" >> $GITHUB_STEP_SUMMARY
+            printf '\n%b\n' "Found older running/queued duplicate runs: ${duplicates}. Skipping this run." >> $GITHUB_STEP_SUMMARY
+          else
+            printf '%s\n' "should_skip=false" >> "$GITHUB_OUTPUT"
+            printf '\n%b\n' "### :arrow_forward: Skip Duplicate Job" >> $GITHUB_STEP_SUMMARY
+            printf '\n%b\n' "No older duplicate runs found. Proceeding." >> $GITHUB_STEP_SUMMARY
+          fi
 
   mirror_url:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
