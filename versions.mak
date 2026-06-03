@@ -1,4 +1,4 @@
-CONFIG_SUB_REV = a2287c3041a3
+CONFIG_SUB_REV = 428664896cf9
 # GCC_VER = 15.1.0 will get a release asset - requires sha1 hash file.
 # GCC_VER = 16-2025072 will get a snapshot asset - requires sha1 hash file.
 GCC_VER = 16.1.0
