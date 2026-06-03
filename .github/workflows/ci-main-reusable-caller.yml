@@ -74,7 +74,7 @@ jobs:
           github_ref_name: ${{ github.ref_name }}
           github_run_id: ${{ github.run_id }}
         run: |
-          duplicates=$(gh run list --workflow "${github_workflow}" --branch "${github_ref_name}" --limit 100 --json databaseId,status --jq '.[] | select(.status != "completed" and .databaseId < "${github_run_id}") | .databaseId' | tr '\n' ',' | sed 's/,$//')
+          duplicates=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "${github_workflow}" --branch "${github_ref_name}" --limit 100 --json databaseId,status --jq ".[] | select(.status != \"completed\" and .databaseId < ${github_run_id}) | .databaseId" | tr '\n' ',' | sed 's/,$//')
 
           if [[ -n "$duplicates" ]]; then
             printf '%s\n' "should_skip=true" >> "$GITHUB_OUTPUT"
