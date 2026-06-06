@@ -22,7 +22,6 @@ apply_patches() {
 	local failed_patches_file="${6:-}"
 	local delete_failed="${7:-false}"
 	local caller_dir="${PWD}"
-	local original_dir="${PWD}"
 
 	# Unicode circles - the main symbols used throughout the script
 	local unicode_red_circle="\e[31m"$'\U2B24'"\e[0m"
@@ -48,7 +47,6 @@ apply_patches() {
 
 	# Array to track failed patches
 	local failed_patches=()
-	local error_count=0
 
 	# Handle git repository directory
 	local is_git_repo="false"
@@ -91,7 +89,7 @@ apply_patches() {
 
 	if [[ ! -d $patch_dir ]]; then
 		printf '\n%b Patch directory %b%s%b not found\n' "${unicode_red_circle}" "${color_blue}" "$patch_dir" "${color_end}"
-		cd "$original_dir" || {
+		cd "$caller_dir" || {
 			printf '\n%b %s\n' "${unicode_yellow_circle}" "Warning: Failed to return to original directory"
 			return 1
 		}
@@ -111,7 +109,7 @@ apply_patches() {
 		printf '   %b- fix-bug.patch%b\n' "${color_green}" "${color_end}"
 		printf '   %b- update-version.diff%b\n' "${color_green}" "${color_end}"
 		printf '   %b- security-patch.patch%b\n' "${color_green}" "${color_end}"
-		cd "$original_dir" || {
+		cd "$caller_dir" || {
 			printf '\n%b %s\n' "${unicode_yellow_circle}" "Warning: Failed to return to original directory"
 			return 1
 		}
@@ -137,89 +135,67 @@ apply_patches() {
 
 		printf '\n%b Processing: %b%s%b\n' "${unicode_blue_circle}" "${color_cyan}" "$(basename "$patch_file")" "${color_end}"
 
+		local error_message=""
+
 		if [[ $dry_run == "true" ]]; then
 			if [[ $is_git_repo == "true" ]]; then
-				if [[ $verbose == "true" ]]; then
-					if git apply --check --verbose "$patch_file" 2> /dev/null; then
-						printf '\n  %b %bOK%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
-					else
-						printf '  %b %bFailed%b\n' "${unicode_red_circle}" "${color_red}" "${color_end}"
-						failed_patches+=("$(basename "$patch_file")")
-						error_message=$(git apply --check "$patch_file" 2>&1)
-						printf '  %b %bReason:%b\n' "${unicode_yellow_circle}" "${color_yellow}" "${color_end}"
-						printf '%s\n' "$error_message" | sed 's/^/      /'
-					fi
+				if error_message=$(git apply --check "$patch_file" 2>&1); then
+					printf '\n  %b %bOK%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
 				else
-					if git apply --check "$patch_file" 2> /dev/null; then
-						printf '\n  %b %bOK%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
-					else
-						printf '  %b %bFailed%b\n' "${unicode_red_circle}" "${color_red}" "${color_end}"
-						failed_patches+=("$(basename "$patch_file")")
-						error_message=$(git apply --check "$patch_file" 2>&1 | head -1)
-						printf '  %b %bReason:%b\n' "${unicode_yellow_circle}" "${color_yellow}" "${color_end}"
-						printf '%s\n' "$error_message" | sed 's/^/      /'
-					fi
+					printf '  %b %bFailed%b\n' "${unicode_red_circle}" "${color_red}" "${color_end}"
+					failed_patches+=("$(basename "$patch_file")")
+					[[ $verbose != "true" ]] && error_message="$(printf '%s' "$error_message" | head -1)"
+					printf '  %b %bReason:%b\n' "${unicode_yellow_circle}" "${color_yellow}" "${color_end}"
+					printf '%s\n' "$error_message" | sed 's/^/      /'
 				fi
 			else
 				# Use patch command for non-git directories
-				if [[ $verbose == "true" ]]; then
-					if patch --dry-run -p1 -i "$patch_file" > /dev/null 2>&1; then
-						printf '\n  %b %bOK%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
-					else
-						printf '\n  %b %bFailed%b\n' "${unicode_red_circle}" "${color_red}" "${color_end}"
-						failed_patches+=("$(basename "$patch_file")")
-						error_message=$(patch --dry-run -p1 -i "$patch_file" 2>&1)
-						printf '  %b %bReason:%b\n' "${unicode_yellow_circle}" "${color_yellow}" "${color_end}"
-						printf '%s\n' "$error_message" | sed 's/^/      /'
-					fi
+				if error_message=$(patch --dry-run -p1 -i "$patch_file" 2>&1); then
+					printf '\n  %b %bOK%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
 				else
-					if patch --dry-run -p1 -i "$patch_file" > /dev/null 2>&1; then
-						printf '\n  %b %bOK%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
-					else
-						printf '\n  %b %bFailed%b\n' "${unicode_red_circle}" "${color_red}" "${color_end}"
-						failed_patches+=("$(basename "$patch_file")")
-						error_message=$(patch --dry-run -p1 -i "$patch_file" 2>&1 | head -1)
-						printf '  %b %bReason:%b\n' "${unicode_yellow_circle}" "${color_yellow}" "${color_end}"
-						printf '%s\n' "$error_message" | sed 's/^/      /'
-					fi
+					printf '\n  %b %bFailed%b\n' "${unicode_red_circle}" "${color_red}" "${color_end}"
+					failed_patches+=("$(basename "$patch_file")")
+					[[ $verbose != "true" ]] && error_message="$(printf '%s' "$error_message" | head -1)"
+					printf '  %b %bReason:%b\n' "${unicode_yellow_circle}" "${color_yellow}" "${color_end}"
+					printf '%s\n' "$error_message" | sed 's/^/      /'
 				fi
 			fi
 		else
 			local applied="false"
-			local error_message=""
 
 			if [[ $is_git_repo == "true" ]]; then
 				# Git repository - use git apply
-				if git apply "$patch_file" 2> /dev/null; then
+				if error_message=$(git apply "$patch_file" 2>&1); then
 					printf '\n  %b %bApplied%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
 					applied="true"
+					error_message=""
 				elif git apply --3way "$patch_file" 2> /dev/null; then
 					printf '  %b %bApplied with 3-way merge%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
 					applied="true"
+					error_message=""
 				elif [[ $force == "true" ]] && git apply --ignore-whitespace "$patch_file" 2> /dev/null; then
 					printf '  %b %bApplied (ignored whitespace)%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
 					applied="true"
+					error_message=""
 				elif [[ $force == "true" ]] && git apply --reject "$patch_file" 2> /dev/null; then
 					printf '  %b %bApplied with reject files (check .rej files for conflicts)%b\n' "${unicode_yellow_circle}" "${color_yellow}" "${color_end}"
 					applied="true"
-				else
-					# Capture the error message
-					error_message=$(git apply "$patch_file" 2>&1)
+					error_message=""
 				fi
 			else
 				# Non-git directory - use patch command
-				if patch -p1 -i "$patch_file" > /dev/null 2>&1; then
+				if error_message=$(patch -p1 -i "$patch_file" 2>&1); then
 					printf '\n  %b %bApplied%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
 					applied="true"
+					error_message=""
 				elif [[ $force == "true" ]] && patch --ignore-whitespace -p1 -i "$patch_file" > /dev/null 2>&1; then
 					printf '  %b %bApplied (ignored whitespace)%b\n' "${unicode_green_circle}" "${color_green}" "${color_end}"
 					applied="true"
-				elif [[ $force == "true" ]] && patch --reject-file=- -p1 -i "$patch_file" > /dev/null 2>&1; then
-					printf '  %b %bApplied with reject files (check .rej files for conflicts)%b\n' "${unicode_yellow_circle}" "${color_yellow}" "${color_end}"
+					error_message=""
+				elif [[ $force == "true" ]] && patch --force -p1 -i "$patch_file" > /dev/null 2>&1; then
+					printf '  %b %bApplied with --force (check for .rej files — some hunks may have failed)%b\n' "${unicode_yellow_circle}" "${color_yellow}" "${color_end}"
 					applied="true"
-				else
-					# Capture the error message
-					error_message=$(patch -p1 -i "$patch_file" 2>&1)
+					error_message=""
 				fi
 			fi
 
@@ -228,7 +204,6 @@ apply_patches() {
 				printf '  %b %bReason:%b\n' "${unicode_yellow_circle}" "${color_yellow}" "${color_end}"
 				printf '%s\n' "$error_message" | sed 's/^/      /'
 				failed_patches+=("$(basename "$patch_file")")
-				((error_count++))
 				if [[ $verbose == "true" ]]; then
 					printf '\n%b%s%b\n' "${color_yellow}" "    Detailed error:" "${color_end}"
 					if [[ $is_git_repo == "true" ]]; then
@@ -302,13 +277,13 @@ apply_patches() {
 	fi
 
 	# Return to original directory
-	cd "$original_dir" || {
+	cd "$caller_dir" || {
 		printf '\n%s\n' "Warning: Failed to return to original directory"
 		return 1
 	}
 
-	# Return error code if any patches failed in apply mode
-	if [[ $dry_run == "false" && $error_count -gt 0 ]]; then
+	# Return error code if any patches failed
+	if [[ ${#failed_patches[@]} -gt 0 ]]; then
 		return 1
 	fi
 }
@@ -316,15 +291,17 @@ apply_patches() {
 # Main execution when script is called directly
 if [[ ${BASH_SOURCE[0]} == "${0}" ]]; then
 
+	script_name="$(basename "${BASH_SOURCE[0]}")"
+
 	# Show usage if no arguments provided
 	if [[ $# -eq 0 ]]; then
-		printf '\n%b%s%b\n' "${color_cyan}" "Usage: $0 [OPTIONS] [patch_directory]" "${color_end}"
+		printf '\n%b%s%b\n' "${color_cyan}" "Usage: $script_name [OPTIONS] [patch_directory]" "${color_end}"
 		printf '\n%b%s%b\n' "${color_cyan}" "Check patches from a directory (dry run by default). Use --apply to actually apply them." "${color_end}"
 		printf '\n%b%s%b\n' "${color_yellow}" "Basic examples:" "${color_end}"
-		printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 my-patches                 " "${color_end}" "${color_cyan}" " # Check patches from 'my-patches' directory (dry run)" "${color_end}"
-		printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -a my-patches              " "${color_end}" "${color_cyan}" " # Apply patches from 'my-patches' directory" "${color_end}"
-		printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -r /path/to/repo my-patches" "${color_end}" "${color_cyan}" " # Check patches for specific directory" "${color_end}"
-		printf '\n%b%s%b\n' "${color_blue}" "Use '$0 --help' for detailed options and usage information." "${color_end}"
+		printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name my-patches                 " "${color_end}" "${color_cyan}" " # Check patches from 'my-patches' directory (dry run)" "${color_end}"
+		printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -a my-patches              " "${color_end}" "${color_cyan}" " # Apply patches from 'my-patches' directory" "${color_end}"
+		printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -r /path/to/repo my-patches" "${color_end}" "${color_cyan}" " # Check patches for specific directory" "${color_end}"
+		printf '\n%b%s%b\n' "${color_blue}" "Use '$script_name --help' for detailed options and usage information." "${color_end}"
 		printf '\n'
 		exit 0
 	fi
@@ -373,8 +350,7 @@ if [[ ${BASH_SOURCE[0]} == "${0}" ]]; then
 				if [[ -n $2 && ! $2 =~ ^- ]]; then
 					failed_patches_file="$2"
 					# Basic validation for output file
-					declare save_dir
-					save_dir="$(dirname "$2" 2> /dev/null)" || save_dir=""
+					save_dir="$(dirname "$2" 2> /dev/null)"
 					if [[ -n $save_dir && ! -d $save_dir ]]; then
 						printf '\n%b%s%b\n' "${color_yellow}" "Warning: Directory '$save_dir' does not exist" "${color_end}" >&2
 					fi
@@ -389,12 +365,12 @@ if [[ ${BASH_SOURCE[0]} == "${0}" ]]; then
 				shift
 				;;
 			-h | --help)
-				printf '\n%b%s%b\n' "${color_cyan}" "Usage: $0 [OPTIONS] [patch_directory]" "${color_end}"
+				printf '\n%b%s%b\n' "${color_cyan}" "Usage: $script_name [OPTIONS] [patch_directory]" "${color_end}"
 				printf '\n%b%s%b\n' "${color_yellow}" "Options:" "${color_end}"
 				printf '\n%b%s%b\n' "${color_gray}" "  -d, --dry-run            Only check patches without applying them (default)" "${color_end}"
 				printf '\n%b%s%b\n' "${color_gray}" "  -a, --apply              Actually apply patches (overrides default dry run)" "${color_end}"
 				printf '\n%b%s%b\n' "${color_gray}" "  -v, --verbose            Show detailed output for debugging" "${color_end}"
-				printf '\n%b%s%b\n' "${color_gray}" "  -f, --force              Try harder to apply patches (ignore whitespace, use reject files)" "${color_end}"
+				printf '\n%b%s%b\n' "${color_gray}" "  -f, --force              Try harder to apply patches (ignore whitespace, force through hunks)" "${color_end}"
 				printf '\n%b%s%b\n' "${color_gray}" "  -r, --repo DIR           Target directory to apply patches to (git repo or regular directory)" "${color_end}"
 				printf '\n%b%s%b\n' "${color_gray}" "  -s, --save-failed FILE   Save failed patch file names to specified file" "${color_end}"
 				printf '\n%b%s%b\n' "${color_gray}" "  -x, --delete-failed      Delete failed patch files from patch directory" "${color_end}"
@@ -406,18 +382,18 @@ if [[ ${BASH_SOURCE[0]} == "${0}" ]]; then
 				printf '\n%b%s%b\n' "${color_gray}" "  - Git repositories: Uses 'git apply' with 3-way merge support" "${color_end}"
 				printf '\n%b%s%b\n' "${color_gray}" "  - Regular directories: Uses 'patch' command" "${color_end}"
 				printf '\n%b%s%b\n' "${color_yellow}" "Examples:" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 my-patches                    " "${color_end}" "${color_cyan}" "    # Check patches from './my-patches' (dry run)" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -a my-patches                " "${color_end}" "${color_cyan}" "     # Apply patches from './my-patches' to current directory" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -a -r /path/to/repo patches   " "${color_end}" "${color_cyan}" "    # Apply patches from './patches' to specified directory" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -r my-repo my-patches         " "${color_end}" "${color_cyan}" "    # Check patches from './my-patches' for './my-repo'" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 --repo ../other-project patches   " "${color_end}" "${color_cyan}" "# Check patches from './patches' for '../other-project'" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 /abs/patches -r /abs/dir      " "${color_end}" "${color_cyan}" "    # Check patches using absolute paths" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -d patches                    " "${color_end}" "${color_cyan}" "    # Explicitly specify dry run (same as default)" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -a -v -f my-patches           " "${color_end}" "${color_cyan}" "    # Apply with verbose output and force mode" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -d -s failed.txt patches      " "${color_end}" "${color_cyan}" "    # Dry run and save failed patches to 'failed.txt'" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -d -s /tmp/fails.list patches " "${color_end}" "${color_cyan}" "    # Dry run and save failed patches with absolute path" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -d -x patches                 " "${color_end}" "${color_cyan}" "    # Dry run and delete failed patches from patch directory" "${color_end}"
-				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $0 -d -x -v patches              " "${color_end}" "${color_cyan}" "    # Dry run, delete failed patches, and show verbose output" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name my-patches                    " "${color_end}" "${color_cyan}" "    # Check patches from './my-patches' (dry run)" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -a my-patches                " "${color_end}" "${color_cyan}" "     # Apply patches from './my-patches' to current directory" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -a -r /path/to/repo patches   " "${color_end}" "${color_cyan}" "    # Apply patches from './patches' to specified directory" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -r my-repo my-patches         " "${color_end}" "${color_cyan}" "    # Check patches from './my-patches' for './my-repo'" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name --repo ../other-project patches   " "${color_end}" "${color_cyan}" "# Check patches from './patches' for '../other-project'" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name /abs/patches -r /abs/dir      " "${color_end}" "${color_cyan}" "    # Check patches using absolute paths" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -d patches                    " "${color_end}" "${color_cyan}" "    # Explicitly specify dry run (same as default)" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -a -v -f my-patches           " "${color_end}" "${color_cyan}" "    # Apply with verbose output and force mode" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -d -s failed.txt patches      " "${color_end}" "${color_cyan}" "    # Dry run and save failed patches to 'failed.txt'" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -d -s /tmp/fails.list patches " "${color_end}" "${color_cyan}" "    # Dry run and save failed patches with absolute path" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -d -x patches                 " "${color_end}" "${color_cyan}" "    # Dry run and delete failed patches from patch directory" "${color_end}"
+				printf '\n%b%s%b%b%s%b\n' "${color_green}" "  $script_name -d -x -v patches              " "${color_end}" "${color_cyan}" "    # Dry run, delete failed patches, and show verbose output" "${color_end}"
 				printf '\n%b%s%b\n' "${color_yellow}" "Fixing Failed Patches:" "${color_end}"
 				printf '\n%b%s%b\n' "${color_gray}" "  When patches fail, the script suggests recovery methods based on target type:" "${color_end}"
 				printf '\n%b%s%b\n' "${color_cyan}" "  Git repositories:" "${color_end}"
@@ -455,7 +431,7 @@ if [[ ${BASH_SOURCE[0]} == "${0}" ]]; then
 
 	apply_patches "$patch_dir" "$dry_run" "$verbose" "$force" "$git_repo" "$failed_patches_file" "$delete_failed_patches"
 	exit_code=$?
-fi
 
-printf '\n'
-exit "${exit_code:-0}"
+	printf '\n'
+	exit "${exit_code:-0}"
+fi
