@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
 
       - name: Cache sources (check)
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         id: cache-sources
         with:
           path: ${{ github.workspace }}/sources
@@ -36,7 +36,7 @@ jobs:
 
       - name: Cache sources (save)
         if: steps.cache-sources.outputs.cache-hit != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache/save@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           path: ${{ github.workspace }}/sources
           key: mcm-sources-${{ hashFiles('versions.mak') }}
