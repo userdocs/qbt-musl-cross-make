@@ -114,7 +114,7 @@ jobs:
           upstream_versions[GMP_VER]="$(curl -L "${gnu_mirror_url}/gmp/" | sed -En 's|.*href="gmp-([^"]*).tar.xz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
           upstream_versions[MPC_VER]="$(curl -L "${gnu_mirror_url}/mpc/" | sed -En 's|.*href="mpc-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
           upstream_versions[MPFR_VER]="$(curl -L "${gnu_mirror_url}/mpfr/" | sed -En 's|.*href="mpfr-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
-          upstream_versions[LINUX_VER]="$(curl -L "https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/" | sed -En 's|.*href="linux-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
+          upstream_versions[LINUX_VER]="$(curl -L "https://mirrors.edge.kernel.org/pub/linux/kernel/v7.x/" | sed -En 's|.*href="linux-([^"]*).tar.gz".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
           upstream_versions[ISL_VER]="$(curl -L https://sourceforge.net/projects/libisl/files | sed -En 's|.*href=".*isl-([^"]*).tar.xz/download".*|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
           upstream_versions[MOLD_VER]="$(git ls-remote -t "https://github.com/rui314/mold.git" | sed -En 's|.*refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
           upstream_versions[ZLIB_VER]="$(git ls-remote -t "https://github.com/madler/zlib" | sed -En 's|.*refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$|\1|p' | sort -rV | { read line; printf '%s' "$line"; })"
@@ -135,7 +135,7 @@ jobs:
           upstream_urls_dl[GMP_VER]="${gnu_mirror_url}/gmp/gmp-${upstream_versions[GMP_VER]}.tar.xz"
           upstream_urls_dl[MPC_VER]="${gnu_mirror_url}/mpc/mpc-${upstream_versions[MPC_VER]}.tar.gz"
           upstream_urls_dl[MPFR_VER]="${gnu_mirror_url}/mpfr/mpfr-${upstream_versions[MPFR_VER]}.tar.xz"
-          upstream_urls_dl[LINUX_VER]="https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/linux-${upstream_versions[LINUX_VER]}.tar.xz"
+          upstream_urls_dl[LINUX_VER]="https://mirrors.edge.kernel.org/pub/linux/kernel/v7.x/linux-${upstream_versions[LINUX_VER]}.tar.xz"
           upstream_urls_dl[ISL_VER]="https://libisl.sourceforge.io/isl-${upstream_versions[ISL_VER]}.tar.xz"
 
           upstream_urls_dl[MOLD_VER]="https://github.com/rui314/mold/archive/refs/tags/v${upstream_versions[MOLD_VER]}.tar.gz"
