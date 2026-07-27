@@ -3,7 +3,8 @@ SOURCES = $(shell pwd)/sources
 -include versions.mak
 -include source_urls.mak
 
-DL_CMD = curl -L4 --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 -o
+# DL_CMD = curl -L4 --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 -o
+DL_CMD = curl -L4 --fail --connect-timeout 20 --max-time 600 --retry 10 --retry-delay 5 --retry-all-errors -o
 SHA1_CMD = sha1sum -c
 
 COWPATCH = $(CURDIR)/cowpatch.sh
