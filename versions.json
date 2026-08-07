@@ -1,6 +1,6 @@
 {
   "CONFIG_SUB_REV": "428664896cf9",
-  "GCC_VER": "16.1.0",
+  "GCC_VER": "16.2.0",
   "BINUTILS_VER": "2.47",
   "MUSL_VER": "f21a96538f78",
   "GMP_VER": "6.3.0",
