@@ -190,7 +190,7 @@ jobs:
       cancel-in-progress: true
     permissions:
       contents: write
-    uses: ./.github/workflows/ci-check-new-releases.yml
+    uses: $/.github/workflows/ci-check-new-releases.yml
     with:
       bypass_update_check: ${{ needs.scheduled_defaults.outputs.bypass_update_check }}
       bypass_git_commit: ${{ needs.scheduled_defaults.outputs.bypass_git_commit }}
@@ -276,7 +276,7 @@ jobs:
       cancel-in-progress: true
     permissions:
       contents: write
-    uses: ./.github/workflows/ci-bootstrap-build-deps.yml
+    uses: $/.github/workflows/ci-bootstrap-build-deps.yml
     with:
       gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
 
@@ -294,7 +294,7 @@ jobs:
       id-token: write
       contents: read
       attestations: write
-    uses: ./.github/workflows/ci-mcm-build.yml
+    uses: $/.github/workflows/ci-mcm-build.yml
     with:
       mcm_build_matrix: ${{ needs.ci-bootstrap-matrix.outputs.mcm_build_matrix }}
       gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
@@ -311,7 +311,7 @@ jobs:
       cancel-in-progress: true
     permissions:
       contents: write
-    uses: ./.github/workflows/ci-mcm-release.yml
+    uses: $/.github/workflows/ci-mcm-release.yml
 
   ci-docker-build:
     if: >
@@ -334,7 +334,7 @@ jobs:
       id-token: write
       packages: write
       attestations: write
-    uses: ./.github/workflows/ci-docker-build.yml
+    uses: $/.github/workflows/ci-docker-build.yml
     with:
       docker_build_matrix: ${{ needs.ci-bootstrap-matrix.outputs.docker_build_matrix }}
       docker_build_platforms: ${{ needs.ci-bootstrap-matrix.outputs.docker_build_platforms }}
@@ -357,7 +357,7 @@ jobs:
       cancel-in-progress: true
     permissions:
       contents: read
-    uses: ./.github/workflows/ci-docker-test.yml
+    uses: $/.github/workflows/ci-docker-test.yml
     with:
       docker_test_matrix: ${{ needs.ci-bootstrap-matrix.outputs.docker_test_matrix }}
       docker_build_platforms: ${{ needs.ci-bootstrap-matrix.outputs.docker_build_platforms }}
