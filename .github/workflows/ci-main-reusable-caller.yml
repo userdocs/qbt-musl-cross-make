@@ -363,7 +363,10 @@ jobs:
       docker_build_platforms: ${{ needs.ci-bootstrap-matrix.outputs.docker_build_platforms }}
 
   ci-auto-rerun-failed-jobs:
-    if: failure() && (needs.scheduled_defaults.outputs.skip_rerun || 'false') == 'false'
+    if: >
+      failure()
+      && (needs.scheduled_defaults.outputs.skip_rerun || 'false') == 'false'
+      && github.run_attempt <= (needs.scheduled_defaults.outputs.retries || 1)
     needs:
       [
         skip_duplicate_job,
