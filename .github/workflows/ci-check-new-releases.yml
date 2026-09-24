@@ -26,7 +26,7 @@ jobs:
   check_release:
     outputs:
       build_new_release: ${{ steps.boot_strap_release.outputs.build_new_release }}
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     env:
       GH_TOKEN: "${{ github.token }}"
       build_new_release: "false"
