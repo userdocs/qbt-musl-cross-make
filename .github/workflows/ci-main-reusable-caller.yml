@@ -60,7 +60,7 @@ on:
 
 jobs:
   skip_duplicate_job:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     permissions:
       actions: write
       contents: read
@@ -89,7 +89,7 @@ jobs:
   mirror_url:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
     needs: ["skip_duplicate_job"]
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     permissions:
       contents: read
     outputs:
@@ -121,7 +121,7 @@ jobs:
   scheduled_defaults:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
     needs: ["skip_duplicate_job", "mirror_url"]
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     permissions:
       contents: read
     outputs:
@@ -146,7 +146,7 @@ jobs:
   show_outputs:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
     needs: [skip_duplicate_job, scheduled_defaults]
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     permissions:
       contents: read
     env:
@@ -210,7 +210,7 @@ jobs:
         ci-check-new-releases,
         ci-bootstrap-build-deps,
       ]
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     outputs:
       mcm_build_matrix: ${{ steps.triples.outputs.mcm_build_matrix }}
       docker_build_matrix: ${{ steps.triples.outputs.docker_build_matrix }}
@@ -382,7 +382,7 @@ jobs:
       cancel-in-progress: true
     permissions:
       actions: write
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     environment: production
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
