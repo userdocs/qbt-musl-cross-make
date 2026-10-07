@@ -78,9 +78,9 @@ printf '%b\n\n' " ${text_dim}${text_underlined}These are the target specific com
 
 printf '%b\n\n' " sed -i \"s|^GCC_CONFIG_FOR_TARGET +=.*|GCC_CONFIG_FOR_TARGET += ${target_config}|\" config.mak"
 printf '%b\n\n' " docker run --platform=linux/${docker_platform} -w /root -v $(pwd):/root alpine:edge"
-printf '%b\n' " apk add -u --no-cache autoconf automake bash bison build-base \ "
-printf '%b\n' " curl findutils flex git libarchive-tools libtool linux-headers \ "
-printf '%b\n\n' " musl-dev patch perl pkgconf rsync tar texinfo xz zip zlib-dev"
+printf '%b\n' " apk add -u --no-cache autoconf automake bash bison build-base cargo \ "
+printf '%b\n' " curl findutils flex git libarchive-tools libtool linux-headers llvm-libunwind-static \ "
+printf '%b\n\n' " musl-dev patch perl pkgconf rsync rust tar texinfo xz zip zlib-dev zlib-static"
 printf '%b\n\n' " make -j${threads} install TARGET=\"${target}\" OUTPUT=\"build/${target}\" | tee ${target}-build.log"
 printf '%b\n' " cd \"build\""
 printf '%b\n\n' " XZ_OPT=-9T0 tar -cvJf ${target}.tar.xz ${target}/"
@@ -92,9 +92,9 @@ if [[ "${2}" == "build" ]]; then
 	sed -i "s|^GCC_CONFIG_FOR_TARGET +=.*|GCC_CONFIG_FOR_TARGET += ${target_config}|" config.mak
 	docker run --platform=linux/${docker_platform} -w /root -v "$(pwd)":/root alpine:edge /bin/sh -c "
         apk update && \
-        apk add -u --no-cache autoconf automake bash bison build-base \
-            curl findutils flex git libarchive-tools libtool linux-headers \
-            musl-dev patch perl pkgconf rsync tar texinfo xz zip zlib-dev && \
+        apk add -u --no-cache autoconf automake bash bison build-base cargo \
+            curl findutils flex git libarchive-tools libtool linux-headers llvm-libunwind-static \
+            musl-dev patch perl pkgconf rsync rust tar texinfo xz zip zlib-dev zlib-static && \
         git config --global --add safe.directory '*' && \
         make -j${threads} install TARGET=\"${target}\" OUTPUT=\"/root/build/${target}\" | tee ${target}-build.log && \
         cd \"build\" && \

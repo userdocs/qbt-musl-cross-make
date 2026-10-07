@@ -38,10 +38,10 @@ jobs:
           os_id: "alpine"
           os_version_id: "edge"
           additional_apps: >
-            autoconf automake bash bison build-base cmake curl
+            autoconf automake bash bison build-base cargo curl
             findutils flex git libarchive-tools libtool
-            linux-headers patch perl pkgconf rsync
-            tar texinfo xz zip zlib-dev zlib-static
+            linux-headers llvm-libunwind-static patch perl pkgconf rsync
+            rust tar texinfo xz zip zlib-dev zlib-static
           custom_docker_commands: |
             -e GNU_MIRROR_URL=${{ inputs.gnu_mirror_url }}
 

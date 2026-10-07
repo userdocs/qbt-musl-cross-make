@@ -211,6 +211,11 @@ install-gcc: | obj_gcc/.lc_built
 	ln -sf $(TARGET)-gcc $(DESTDIR)$(OUTPUT)/bin/$(TARGET)-cc
 
 # Mold linker - conditionally built when MOLD_SRCDIR is provided
+#
+# mold v3+ is written in Rust and built with Cargo (Rust >= 1.95 and a C compiler
+# are required). The CMake options and the oneTBB dependency are gone; mimalloc,
+# zstd and BLAKE3 are bundled and the system zlib is linked when available.
+# Default Cargo features build mold for all targets (replaces MOLD_TARGETS).
 ifneq ($(MOLD_SRCDIR),MOLD_SRCDIR_not_set)
 
 all: mold
@@ -223,23 +228,32 @@ mold: obj_mold/.lc_built
 mold_src: | $(MOLD_SRCDIR)
 	ln -sf $(MOLD_SRCDIR) $@
 
-obj_mold/.lc_configured: | obj_mold mold_src
-	cmake -B obj_mold -S mold_src \
-		-DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_INSTALL_PREFIX= \
-		-DCMAKE_C_FLAGS="$(OPTIMIZATION_FLAGS) $(SECURITY_FLAGS)" \
-		-DCMAKE_CXX_FLAGS="$(OPTIMIZATION_FLAGS) $(SECURITY_FLAGS) $(WARNING_FLAGS)" \
-		-DCMAKE_EXE_LINKER_FLAGS="$(LINKER_FLAGS)" \
-		-DMI_BUILD_SHARED=OFF \
-		-DMOLD_MOSTLY_STATIC=ON
+# Build artifacts go to obj_mold/target so the shared source tree stays clean;
+# install-mold.sh reads CARGO_TARGET_DIR to find them.
+# CFLAGS are picked up by the cc crate for the C parts (mimalloc, zstd, BLAKE3,
+# lto-message.c and mold-wrapper.so, which mold's build.rs compiles with the C compiler).
+MOLD_CARGO_TARGET_DIR = $(CURDIR)/obj_mold/target
+MOLD_CARGO_ENV = \
+	CARGO_TARGET_DIR="$(MOLD_CARGO_TARGET_DIR)" \
+	CFLAGS="$(OPTIMIZATION_FLAGS) $(SECURITY_FLAGS)"
+
+# Link the mold executable statically. These flags are passed via `cargo rustc`
+# so they apply only to the final binary: putting +crt-static in RUSTFLAGS would
+# also hit proc-macro dependencies (syn), which cannot be built static on musl hosts.
+# -static/--static/-pthread are dropped because rustc chooses the static-pie mode itself.
+MOLD_STATIC_RUSTFLAGS = -C target-feature=+crt-static -C strip=symbols \
+	$(foreach f,$(filter-out -static --static -pthread,$(LINKER_FLAGS)),-C link-arg=$(f))
+
+# Building mold-cli (default features = all targets) also builds the mold crate,
+# whose build.rs writes mold-wrapper.so into the release directory.
+obj_mold/.lc_built: | obj_mold mold_src
+	cd mold_src && $(MOLD_CARGO_ENV) cargo rustc --release --locked -p mold-cli --bin mold -- $(MOLD_STATIC_RUSTFLAGS)
 	touch $@
 
-obj_mold/.lc_built: | obj_mold/.lc_configured
-	cmake --build obj_mold -j$$(nproc)
-	touch $@
-
+# mold looks for mold-wrapper.so next to itself and in ../lib/mold, so with the
+# default $(PREFIX)/lib layout the toolchain stays relocatable and MOLD_LIBDIR is not needed.
 install-mold: | obj_mold/.lc_built
-	cmake --install obj_mold --prefix $(DESTDIR)$(OUTPUT)
+	cd mold_src && CARGO_TARGET_DIR="$(MOLD_CARGO_TARGET_DIR)" PREFIX="$(OUTPUT)" DESTDIR="$(DESTDIR)" ./install-mold.sh
 	ln -sf mold $(DESTDIR)$(OUTPUT)/bin/$(TARGET)-ld.mold
 
 endif
