@@ -1,11 +1,11 @@
 {
   "build_host": [
     {
-      "name": "ubuntu-24.04",
+      "name": "ubuntu-26.04",
       "triple_prefix": "x86_64"
     },
     {
-      "name": "ubuntu-24.04-arm",
+      "name": "ubuntu-26.04-arm",
       "triple_prefix": "aarch64"
     }
   ],
