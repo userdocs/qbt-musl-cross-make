@@ -33,16 +33,16 @@ if [[ -z $1 && -z $target ]]; then
 fi
 
 # Check if $target is set and matches a value in arch_array
-if [[ -n "$target" ]]; then
+if [[ -n $target ]]; then
 	target_found=false
 	for arch in "${arch_array[@]}"; do
-		if [[ "$target" == "$arch" ]]; then
+		if [[ $target == "$arch" ]]; then
 			target_found=true
 			break
 		fi
 	done
 
-	if [[ "$target_found" == false ]]; then
+	if [[ $target_found == false ]]; then
 		printf '\n%b\n\n' "${color_red} Error:${color_end} target ${color_yellow}$target${color_end} does not match an architecture in triples.json"
 		exit 1
 	fi
@@ -50,8 +50,8 @@ fi
 
 target_config=$(jq -r --arg arch "${target}" '.include[] | select(.arch_type == $arch) | .arch_config' triples.json)
 
-if [[ -z "$target_config" ]]; then
-    printf '\n%b\n\n' "${color_red} Error:${color_end} Architecture ${color_yellow}${1}${color_end} config is null?"
+if [[ -z $target_config ]]; then
+	printf '\n%b\n\n' "${color_red} Error:${color_end} Architecture ${color_yellow}${1}${color_end} config is null?"
 	exit 1
 fi
 
@@ -82,13 +82,13 @@ printf '%b\n' " apk add -u --no-cache autoconf automake bash bison build-base ca
 printf '%b\n' " curl findutils flex git libarchive-tools libtool linux-headers llvm-libunwind-static \ "
 printf '%b\n\n' " musl-dev patch perl pkgconf rsync rust tar texinfo xz zip zlib-dev zlib-static"
 printf '%b\n\n' " make -j${threads} install TARGET=\"${target}\" OUTPUT=\"build/${target}\" | tee ${target}-build.log"
-printf '%b\n' " cd \"build\""
+printf '%b\n' ' cd "build"'
 printf '%b\n\n' " XZ_OPT=-9T0 tar -cvJf ${target}.tar.xz ${target}/"
 
 printf '%b\n\n' " ${text_dim}${text_underlined}Or do this command to have them done for you:${color_end}"
 printf '%b\n\n' " ${color_magenta}./build-helper.sh${color_end} ${color_yellow}${target}${color_end} ${color_green}build${color_end}"
 
-if [[ "${2}" == "build" ]]; then
+if [[ ${2} == "build" ]]; then
 	sed -i "s|^GCC_CONFIG_FOR_TARGET +=.*|GCC_CONFIG_FOR_TARGET += ${target_config}|" config.mak
 	docker run --platform=linux/${docker_platform} -w /root -v "$(pwd)":/root alpine:edge /bin/sh -c "
         apk update && \
